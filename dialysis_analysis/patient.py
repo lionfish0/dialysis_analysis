@@ -290,7 +290,7 @@ class Patient(object):
         gender = self.pat['baseline_pt_gender_c'].values[0]
         demographics = {'age':age,'vintage':vintage,'weight':weight,'height':height,'gender':gender}
         #frompatient might be causing memory problems! TODO
-        return prophetclass(X,Y,testX,testY,len(inputdialysis),deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
+        return prophetclass(X,Y,testX,testY,len(inputdialysis),deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=None,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
 
 
     def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):
@@ -318,6 +318,32 @@ class Patient(object):
             except PatientException as e:
                 if verbose: print("skipping time point %d (%s)" % (d,e))
         return prophets
+    
+def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):
+        """
+        Produces a prediction object for every time point in the dialysis of the patient.
+        See generate_prophet for parameter details.
+        
+        e.g. generate_all_prophets(100,['num_date','days_since_dialysis'],['dt_heart_rate_pre'],['lt_value_calcium'])
+        
+        set skipstep to a value larger than one to skip some
+        set stopearly to only use earlier data from patient (e.g. if interested in vintages <100 days, set to 100)
+        """
+        prophets = []
+        for d in self.dialysis['num_date'][0::skipstep]:
+            if d>=stopearly:
+                print("Stopped early")
+                break
+            try:
+                prophets.append(
+                    self.generate_prophet(prophetclass,d,traininglength,
+                                          inputdialysis,outputdialysis,
+                                          outputlab,
+                                          delta_dialysis,delta_lab,
+                                          prior_models=prior_models))
+            except PatientException as e:
+                if verbose: print("skipping time point %d (%s)" % (d,e))
+        return prophets    
     
     def plot():
         d = self.dialysis

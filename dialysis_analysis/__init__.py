@@ -12,8 +12,8 @@ np.set_printoptions(precision=2,suppress=True)
 import dask_dp4gp
 import percache
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
-from dialysis_analysis.patient import Patient
-from dialysis_analysis.prophet import Prophet
+from dialysis_analysis.patient import Patient, PatientException
+from dialysis_analysis.prophet import Prophet, ProphetException
 
 verbose = True
 veryverbose = False
@@ -70,12 +70,57 @@ def compute_errors(prophets):
         rmse.append(np.sqrt(np.mean(np.array(err)**2)))
     return mae, rmse
 
+#TODO: Move these methods to inside the patient class?
+def add_pulse_pressures(patients):
+    """
+    Adds the pre and post pulse pressures to the dialysis tables in all the patients in the list passed
+    """
+    for p in patients:
+        p.dialysis['dt_pulse_pressure_post']=p.dialysis['dt_systolic_post']-p.dialysis['dt_diastolic_post']
+        p.dialysis['dt_pulse_pressure_pre']=p.dialysis['dt_systolic_pre']-p.dialysis['dt_diastolic_pre']
+        
 def add_duration_shortfall(patients):
     """
     Adds the duration shortfall to the dialysis tables in all the patients in the list passed
     """
     for p in patients:
         p.dialysis['duration_shortfall'] = p.dialysis['dt_prescr_duration']-p.dialysis['dt_duration']
+        
+        
+def add_comorbidity_columns_to_df(data,main_df,date_column):
+    """
+    Adds maxnumcomorbidities comorbidity columns to the table
+    """
+    maxnumcomorbidities = 14
+    
+    if len(main_df)<1:
+        return
+    times_since = []
+    for date in main_df[date_column]:
+        timesince = np.full(maxnumcomorbidities,np.inf)
+        for d in data:
+            t = (date-d[0])
+            if t<0: t = np.inf
+            timesince[d[2]] = min(t,timesince[d[2]])
+        times_since.append(timesince)
+    times_since = np.array(times_since)
+    comorb_effect = 10/(10+times_since) #never = 0, now = 1, 10 days ago = 0.5
+    for i in range(comorb_effect.shape[1]):
+        main_df['comorbidity_factor_%d'%i] = comorb_effect[:,i]
+        
+def add_comorbidity_columns(patients):
+    """
+    Add comorbidity columns to the dialysis and lab tables for all patients
+    """
+    for p in patients:
+        df = p.comorbidity
+        df = df[df['ComorbPost']==1]
+        data = df[df['Flag'].isin(['ASHD','CHF','CVA','DYSRT','OthCard'])][['cm_date_new','ComorbPost','ComorbNum']].values.tolist()
+        for i in range(len(data)):
+            data[i][0] = (datetime.strptime(data[i][0],'%Y-%m-%d')-datetime(1970,1,1)).days-p.startdate
+
+        add_comorbidity_columns_to_df(data,p.dialysis,'num_date')
+        add_comorbidity_columns_to_df(data,p.lab,'lt_date')
   
 def compute_results(prophets,ip='local'):
     resultsget_predictions = []

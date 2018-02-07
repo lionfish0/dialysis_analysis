@@ -250,8 +250,6 @@ class TestDialysisAnalysis(unittest.TestCase):
         dialysis_analysis.compute_results(prophets[0:300])
 
         deltamodel = DeltaModel(prophets)
-
-        self = TestDialysisAnalysis()
         test_patients = []
         for it in range(30):
             test_patients.append(self.build_test_patient(date(2008,7,10),date(2008,9,10)))

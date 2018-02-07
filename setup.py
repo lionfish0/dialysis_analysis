@@ -10,5 +10,5 @@ setup(
   download_url = 'https://github.com/lionfish0/dialysis_analysis.git',
   keywords = ['dialysis','gaussian process'],
   classifiers = [],
-  install_requires=[],
+  install_requires=['percache'],
 )

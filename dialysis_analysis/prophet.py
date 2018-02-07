@@ -192,6 +192,66 @@ class Prophet(object):
         
         self.baselinerank = 1 #TODO Make this flexible
               
+    def print(self):
+        print("Demographics of source patient")
+        for item in self.demographics:
+            print("%10s %6.2f" % (item,self.demographics[item]))
+
+        print("Patient")
+        if self.frompatient is None:
+            print(" (parameter not set)")
+        else:
+            print("Start date: %d" % self.frompatient.startdate)
+            #todo add more patient info here? or just call a print statement for the patient?
+
+        print("Computation")
+        print("X")
+        print(self.X)
+        print("Y (normalised)")
+        print(self.Y)
+        print("Expected number of regions: %d" % self.regions)
+        if not hasattr(self,'prior_means'):
+            print("Population prior not included ")
+        else:
+            print("Population prior") #todo
+        print("Normalisation Parameters")
+        print("Region    Mean      Std")
+        for i,np in enumerate(self.normparams):
+            print("%2d    %8.4f %8.4f" % (i,np['mean'],np['std']))
+        print("Test point")
+        print(self.testX)
+        print("Test Y (normalised)")
+        print(self.testY)
+
+        print("Delta Model")
+        print("expected number of delta regions: %d" % self.deltaregions)
+        print("X")
+        print(self.deltaX)
+        print("Y")
+        print(self.deltaY)
+        print("Delta Option")
+        print(self.deltaOption)
+        print("")
+        print("Requested Constructor Parameters")
+
+        print("Input Dialysis: ")
+        print(self.inputdialysis)
+        print("Output Dialysis: ")
+        print(self.outputdialysis)
+        print("Output Lab: ")
+        print(self.outputlab)
+        print("Delta Dialysis: ")
+        print(self.delta_dialysis)
+        print("Delta Lab: ")
+        print(self.delta_lab) 
+        print("")
+        print("Results")
+        if hasattr(self,'res'):
+            for item in self.res:
+                print("%10s:"%item)
+                print(self.res[item])
+        
+        
     def remove_outliers(self):
         """
         This method does several operations:
@@ -459,4 +519,28 @@ class ProphetCoregionalised(ProphetGaussianProcess):
 
         m['.*dsdcoreg.W'].fix(0,warning=False) #we don't coregionalise DSD
         m.Gaussian_noise.fix(0.01,warning=False) 
+        return m
+
+class ProphetSimpleGaussian(ProphetGaussianProcess):
+    """
+    Prophets that use a non-coregionalised representation to make predictions.
+    
+    TODO Currently just using coreg with a diagonal coreg matrix
+    """
+    def define_model(self):
+        """
+        """
+        debuginfo = []
+        secondICM = True
+        
+        #this is an RBF over really just the vintage (coregionalised between all features)
+        kern = (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf') \
+            **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=0, name='baselinecoreg'))
+
+        m = GPy.models.GPRegression(self.X,self.Y,kern)
+
+        m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
+        m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
+        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
+        #m.Gaussian_noise.fix(0.01,warning=False) 
         return m

@@ -270,11 +270,11 @@ class Patient(object):
         if len(X)<3:
             raise PatientException("Fewer than three training points.")
             
+        deltaOption = []
         if delta_dialysis is not None:
             for dd in delta_dialysis:
                 assert type(dd) is tuple
             deltaX, deltaY = self.build_model_matrices(['num_date'],[dd[0] for dd in delta_dialysis],[dl[0] for dl in delta_lab],date-traininglength,date-1)
-            deltaOption = []
             deltaOption.extend([dopt[1:] for dopt in delta_dialysis])
             deltaOption.extend([dopt[1:] for dopt in delta_lab])
         else:
@@ -290,7 +290,7 @@ class Patient(object):
         gender = self.pat['baseline_pt_gender_c'].values[0]
         demographics = {'age':age,'vintage':vintage,'weight':weight,'height':height,'gender':gender}
         #frompatient might be causing memory problems! TODO
-        return prophetclass(X,Y,testX,testY,len(inputdialysis),deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=None,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
+        return prophetclass(X,Y,testX,testY,len(inputdialysis),deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
 
 
     def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):
@@ -306,6 +306,7 @@ class Patient(object):
         prophets = []
         for d in self.dialysis['num_date'][0::skipstep]:
             if d>=stopearly:
+                print("Stopped early")
                 break
             try:
                 prophets.append(
@@ -315,7 +316,7 @@ class Patient(object):
                                           delta_dialysis,delta_lab,
                                           prior_models=prior_models))
             except PatientException as e:
-                if veryverbose: print("skipping time point %d (%s)" % (d,e))
+                if verbose: print("skipping time point %d (%s)" % (d,e))
         return prophets
     
     def plot():

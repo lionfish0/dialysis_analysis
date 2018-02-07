@@ -8,6 +8,10 @@ import matplotlib.pyplot as plt
 veryverbose = False
 verbose = True
 
+class DeltaModelException(Exception):
+    def __init__(self,*args,**kwargs):
+        Exception.__init__(self,*args,**kwargs) 
+        
 class DeltaModel():
     def __init__(self,prophets,boxstds = 0.1,kerntype='RBF'):
         regions = prophets[0].regions
@@ -26,7 +30,13 @@ class DeltaModel():
                     deltaX.append(delta_value)
                     deltaY.append(error[region])
 
-
+            if len(deltaX)==0:
+                msg = "Can't generate delta model, no data to train on."
+                if len(prophets)==0:
+                    msg+=" The passed prophets list was empty"
+                else:
+                    msg+=" The passed prophets may not have had results computed for them"
+                raise DeltaModelException(msg)
             middle = np.mean(deltaX,0)*0 #*0 to move middle to axis origin
             keep = np.any((deltaX<middle-boxstds*np.std(deltaX,0)) | (deltaX>middle+boxstds*np.std(deltaX,0)),1)
             deltaX = np.array(deltaX)

@@ -319,7 +319,7 @@ class Patient(object):
                 if verbose: print("skipping time point %d (%s)" % (d,e))
         return prophets
     
-def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):
+    def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):
         """
         Produces a prediction object for every time point in the dialysis of the patient.
         See generate_prophet for parameter details.

@@ -301,6 +301,8 @@ class Prophet(object):
         keep = ~np.isnan(y)[:,0]
         y = y[keep,:]
         
+        if len(y)<2:
+            return 0
         #delta isn't normalised! Don't need to unnormalise!
         #yA = self.unnormalise_specific_mean(y[-1,0],region)
         #yB = self.unnormalise_specific_mean(y[-2,0],region)
@@ -316,6 +318,8 @@ class Prophet(object):
         keep = ~np.isnan(y)[:,0]
         y = y[keep,:]
         
+        if len(y)<1:
+            return 0
         #delta isn't normalised! Don't need to unnormalise!
         #yval = self.unnormalise_specific_mean(y[-1,0],region)
         yval = y[-1,0]

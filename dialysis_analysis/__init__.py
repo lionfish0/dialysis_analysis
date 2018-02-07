@@ -26,6 +26,15 @@ def build_population_prior_model(prophets):
         priorYs.append(p.means_vector())
     priorX = np.array(priorX)
     priorYs = np.array(priorYs)
+    
+    #remove NAN rows - this might be done a little below - TODO Remove duplicate code
+    keep = np.all(~np.isnan(priorX),1)
+    priorX = priorX[keep,:]
+    priorYs = priorYs[keep,:]
+    keep = np.all(~np.isnan(priorYs),1)
+    priorX = priorX[keep,:]
+    priorYs = priorYs[keep,:]
+
     ms = []
     for out in range(priorYs.shape[1]):
         k = GPy.kern.RBF(priorX.shape[1],ARD=True)
@@ -74,10 +83,12 @@ def compute_errors(prophets):
 def add_pulse_pressures(patients):
     """
     Adds the pre and post pulse pressures to the dialysis tables in all the patients in the list passed
+    Also add the syspre-syspost
     """
     for p in patients:
         p.dialysis['dt_pulse_pressure_post']=p.dialysis['dt_systolic_post']-p.dialysis['dt_diastolic_post']
         p.dialysis['dt_pulse_pressure_pre']=p.dialysis['dt_systolic_pre']-p.dialysis['dt_diastolic_pre']
+        p.dialysis['dt_systolic_drop']=p.dialysis['dt_systolic_pre']-p.dialysis['dt_systolic_post']
         
 def add_duration_shortfall(patients):
     """

@@ -30,13 +30,15 @@ class DeltaModel():
                     deltaX.append(delta_value)
                     deltaY.append(error[region])
 
-            if len(deltaX)==0:
-                msg = "Can't generate delta model, no data to train on."
-                if len(prophets)==0:
-                    msg+=" The passed prophets list was empty"
-                else:
-                    msg+=" The passed prophets may not have had results computed for them"
-                raise DeltaModelException(msg)
+            if len(deltaX)==0: #this region has no data.
+                deltamodels.append(None)
+                continue
+                #    msg = "Can't generate delta model, no data to train on."
+                #    if len(prophets)==0:
+                #        msg+=" The passed prophets list was empty"
+                #    else:
+                #        msg+=" The passed prophets may not have had results computed for them"
+                #    raise DeltaModelException(msg)
             middle = np.mean(deltaX,0)*0 #*0 to move middle to axis origin
             keep = np.any((deltaX<middle-boxstds*np.std(deltaX,0)) | (deltaX>middle+boxstds*np.std(deltaX,0)),1)
             deltaX = np.array(deltaX)
@@ -93,8 +95,9 @@ class DeltaModel():
         mins = []
         maxs = []
         for m in self.deltamodels:
-            mins.append(np.min(m.X,0))
-            maxs.append(np.max(m.X,0))
+            if m is not None:
+                mins.append(np.min(m.X,0))
+                maxs.append(np.max(m.X,0))
         mins = np.min(np.array(mins),0)
         maxs = np.max(np.array(maxs),0)
         diffs = maxs-mins
@@ -107,6 +110,8 @@ class DeltaModel():
         l = [dd[0]+'('+dd[1]+')' for dd in p.delta_dialysis]
         l.extend([dl[0]+'('+dl[1]+')' for dl in p.delta_lab])    
         for dm,name in zip(self.deltamodels,regnames):
+            if dm is None:
+                continue
             for i,reg in enumerate(l):
                 figi+=1
                 plt.subplot(len(self.deltamodels),len(l),figi)
@@ -127,6 +132,8 @@ class DeltaModel():
         assert prophets[0].delta_lab == self.prophets[0].delta_lab, "The lab delta parameters in the prophets being updated differ from those used to create the model"
         
         for prophet in prophets:
+            if not hasattr(prophet,'res'):
+                continue
             if 'corrected' in prophet.res:
                 if not suppressduplicatemsgs: print("Warning: Attempting to delta-correct already corrected prophet(s), skipping.")
                 suppressduplicatemsgs = True
@@ -137,6 +144,8 @@ class DeltaModel():
 
             
             for i,dm in enumerate(self.deltamodels):
+                if dm is None:
+                    continue
                 assert len(prophet.res['delta_values'])==dm.X.shape[1], "The delta_values you..." 
                 deltapred, deltavar = dm.predict_noiseless(np.array(prophet.res['delta_values'])[None,:])
 

@@ -4,6 +4,7 @@ import pandas as pd
 import GPy
 np.set_printoptions(precision=2,suppress=True)
 import matplotlib.pyplot as plt
+from dialysis_analysis.plotting import plotmodel
 
 veryverbose = False
 verbose = True
@@ -59,36 +60,7 @@ class DeltaModel():
         self.deltamodels = deltamodels
         self.prophets = prophets
         
-    def plotmodel(self,m,inputdim,Nsteps = 100,bounds=None):
-        """
-        Plots a GPy model, the size of the dots are scaled by the distance from the plane that is being plotted
-        """
-        testX = np.repeat(np.mean(m.X,0)[None,:],Nsteps,0)
-        leftX = m.X.copy()
-        np.delete(leftX,inputdim,1)
-        #invsqrdist = 1/(np.sum((leftX - np.mean(leftX))**2,1))
-        leftX /= np.std(leftX,0)
-        invsqrdist = 1+10/(1+np.sum((leftX - np.mean(leftX))**2,1)) #dist=0 -> 10, dist=1 -> 5, dist=9 -> 1.
-        #print("Centring around:")
-        #print(testX[0,:])
-        if bounds is not None:
-            minv = bounds[0]
-            maxv = bounds[1]
-        else:
-            minv = np.min(m.X[:,inputdim])
-            maxv = np.max(m.X[:,inputdim])
-            diff = maxv-minv
-            minv -= diff / 10
-            maxv += diff / 10
 
-        testvals = np.linspace(minv,maxv,Nsteps)
-        testX[:,inputdim] = testvals
-        predmeans,predvars = m.predict(testX)
-
-        plt.plot(testvals,predmeans)
-        plt.plot(testvals,predmeans-1.96*np.sqrt(predvars))
-        plt.plot(testvals,predmeans+1.96*np.sqrt(predvars))
-        plt.scatter(m.X[:,inputdim],m.Y,invsqrdist)
         
         
     def plot(self):
@@ -115,7 +87,7 @@ class DeltaModel():
             for i,reg in enumerate(l):
                 figi+=1
                 plt.subplot(len(self.deltamodels),len(l),figi)
-                self.plotmodel(dm,i,bounds=[mins[i],maxs[i]])
+                plotmodel(dm,i,bounds=[mins[i],maxs[i]])
                 plt.title("Error in %s" % name)
                 plt.xlabel(reg)   
                 

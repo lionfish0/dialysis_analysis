@@ -11,9 +11,9 @@ from dask.distributed import Client
 np.set_printoptions(precision=2,suppress=True)
 import dask_dp4gp
 import percache
+from dialysis_analysis.plotting import plotmodel
 from dialysis_analysis import *
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
-
 verbose = True
 veryverbose = False
 
@@ -100,6 +100,16 @@ class Prophet(object):
             mean*=self.normparams[region]['std']
             mean+=self.normparams[region]['mean']
         return mean
+    
+    def unnormalise_specific_variance(self,variance,region):
+        """
+        Unnormalise a single variance value, specified by region.
+        Example:
+            predictions = unnormalise_specific_mean(regiontwomean,2)
+        """
+        if ~np.isnan(self.normparams[region]['std']):
+            variance*=self.normparams[region]['std']**2
+        return variance    
     
     def unnormalise_means(self,normalised_means):
         """
@@ -424,8 +434,6 @@ class Prophet(object):
         act[[int(x) for x in self.testX[:,-1]]] = self.testY[:,0]
         return self.unnormalise_means(act)
         
-    def plot(self):
-        pass
         
     def demographics_vector(self):
         return [self.demographics[d] for d in self.demographics]
@@ -433,9 +441,32 @@ class Prophet(object):
     def means_vector(self):
         return [nparam['mean'] for nparam in self.normparams]
         
-        
-        
+    def plot(self):
+        mod = None
+        if not hasattr(self,'res'):
+            print("Need results vector to plot")
+            return
+        if 'model' not in self.res:
+            print("Need GP model to plot")
+            return
+        mod = self.res['model']['normalmodel']
+        inputdims = mod.X.shape[1]-1
+        i=0
+        regnames = self.outputdialysis.copy()
+        regnames.extend(self.outputlab)
 
+        for dim in range(inputdims):
+            for reg in range(self.regions):
+                i+=1
+                plt.subplot(1,self.regions*inputdims,i)
+                minv,maxv = plotmodel(mod,dim,region=reg,prophet=self)#.plot(fixed_inputs=[(2,0),(1,0)])
+                plt.xlabel(self.inputdialysis[dim])
+                plt.ylabel(regnames[reg])
+          
+                #to do - we need to actually test this is the vintage input
+                if dim==0:
+                    plt.vlines(self.frompatient.hospital['hp_date_start_num'],0,10)
+                plt.xlim([minv,maxv])
         
         
         
@@ -472,6 +503,8 @@ class ProphetGaussianProcess(Prophet):
         testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
         normalised_predmean, normalised_predvar = m.predict(testpoints)
         return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), m
+    
+    
     
 class ProphetCoregionalised(ProphetGaussianProcess):
     """

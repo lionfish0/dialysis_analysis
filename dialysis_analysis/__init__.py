@@ -5,7 +5,6 @@ from datetime import datetime,timedelta
 import pandas as pd
 pd.options.mode.chained_assignment = None
 import GPy
-import matplotlib.pyplot as plt
 from dask import compute, delayed
 from dask.distributed import Client
 np.set_printoptions(precision=2,suppress=True)
@@ -78,6 +77,35 @@ def compute_errors(prophets):
         mae.append(np.mean(np.abs(err)))
         rmse.append(np.sqrt(np.mean(np.array(err)**2)))
     return mae, rmse
+
+def compute_results_dataframe(prophets):
+    data = []
+    regnames = prophets[0].outputdialysis.copy()
+    regnames.extend(prophets[0].outputlab)
+    colnames = []
+    colnames.append('Prophet number')
+    colnames.append('Patient Id')
+    colnames.append('Vintage')
+    for r in regnames:
+        colnames.append(r+" (actual)")
+        colnames.append(r+" (predicted)")
+    
+    for i,p in enumerate(prophets):
+        row = []
+        row.append(i)
+        row.append(p.frompatient.pat['proband'].values[0])
+        row.append(p.testX[0,0]) #TODO Assumes first row is vintage
+        
+        if not hasattr(p,'res'):
+            #if veryverbose: print("Skipping prophet as it has not had its results computed")
+            continue
+        for reg,(pred,act) in enumerate(zip(p.res['mean'],p.get_actual())):
+            row.append(act)
+            row.append(pred[0])
+            
+        data.append(row)
+    df = pd.DataFrame(data,columns=colnames)
+    return df
 
 #TODO: Move these methods to inside the patient class?
 def add_pulse_pressures(patients):
@@ -196,3 +224,4 @@ def loadpatientdata(datafiles, getevery = 1):
     """
     dial,pat,hosp,lab,comorbidity = loadpatientdata_fromfiles(datafiles)
     return createpatientobjects(datafiles,dial,pat,hosp,lab,comorbidity,getevery)
+

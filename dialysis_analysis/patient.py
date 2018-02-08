@@ -301,7 +301,9 @@ class Patient(object):
         gender = self.pat['baseline_pt_gender_c'].values[0]
         demographics = {'age':age,'vintage':vintage,'weight':weight,'height':height,'gender':gender}
         #frompatient might be causing memory problems! TODO
-        return prophetclass(X,Y,testX,testY,len(inputdialysis),deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
+        #regions =len(inputdialysis) #WRONG
+        regions = len(outputdialysis)+len(outputlab)
+        return prophetclass(X,Y,testX,testY,regions,deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
 
 
     def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):

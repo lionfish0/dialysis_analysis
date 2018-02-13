@@ -78,6 +78,11 @@ def compute_errors(prophets):
         rmse.append(np.sqrt(np.mean(np.array(err)**2)))
     return mae, rmse
 
+def get_days_til_hospitalisation(prophet,vintage):
+    daystil = prophet.frompatient.hospital['hp_date_start_num']-vintage
+    daystil = daystil[daystil>0]
+    return np.min(daystil)
+    
 def compute_results_dataframe(prophets):
     data = []
     regnames = prophets[0].outputdialysis.copy()
@@ -89,12 +94,13 @@ def compute_results_dataframe(prophets):
     for r in regnames:
         colnames.append(r+" (actual)")
         colnames.append(r+" (predicted)")
-    
+    colnames.append('Days until hospitalisation')
     for i,p in enumerate(prophets):
         row = []
         row.append(i)
         row.append(p.frompatient.pat['proband'].values[0])
-        row.append(p.testX[0,0]) #TODO Assumes first row is vintage
+        vintage = p.testX[0,0]
+        row.append(vintage) #TODO Assumes first row is vintage
         
         if not hasattr(p,'res'):
             #if veryverbose: print("Skipping prophet as it has not had its results computed")
@@ -103,6 +109,7 @@ def compute_results_dataframe(prophets):
             row.append(act)
             row.append(pred[0])
             
+        row.append(get_days_til_hospitalisation(p,vintage))
         data.append(row)
     df = pd.DataFrame(data,columns=colnames)
     return df

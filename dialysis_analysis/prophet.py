@@ -362,7 +362,8 @@ class Prophet(object):
         y = y - np.mean(y) #we just remove the mean - we don't save this etc as we'll just be grabbing the gradient later
         m = GPy.models.GPRegression(x,y,kern)
         m.kern.lengthscale.fix(ls)
-        m.optimize()
+        m.kern.variance = np.var(y) #no idea what to use for this!
+        #m.optimize()
          
 
         testpoint = self.testX[0:1,0:1]
@@ -577,7 +578,7 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         m = GPy.models.GPRegression(self.X,self.Y,kern)
 
         m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
-        m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
+        #m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
         m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
         #m.Gaussian_noise.fix(0.01,warning=False) 
         return m

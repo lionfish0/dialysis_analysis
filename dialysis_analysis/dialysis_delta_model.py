@@ -40,8 +40,10 @@ class DeltaModel():
                 #    else:
                 #        msg+=" The passed prophets may not have had results computed for them"
                 #    raise DeltaModelException(msg)
-            middle = np.mean(deltaX,0)*0 #*0 to move middle to axis origin
+            middle = np.mean(deltaX,0) #*0 to move middle to axis origin
             keep = np.any((deltaX<middle-boxstds*np.std(deltaX,0)) | (deltaX>middle+boxstds*np.std(deltaX,0)),1)
+            if verbose:
+                print("Keeping %0.1f%% of the datapoints" % (100*np.mean(keep)))
             deltaX = np.array(deltaX)
             deltaY = np.array(deltaY)[:,None]
 
@@ -107,9 +109,10 @@ class DeltaModel():
             if not hasattr(prophet,'res'):
                 continue
             if 'corrected' in prophet.res:
-                if not suppressduplicatemsgs: print("Warning: Attempting to delta-correct already corrected prophet(s), skipping.")
+                if not suppressduplicatemsgs: print("Warning: Applying delta-correction to already corrected prophet(s), overwriting previous delta corrections.")
                 suppressduplicatemsgs = True
-                continue
+                prophet.res['mean'] = prophet.res['uncorrected_mean']
+                prophet.res['var'] = prophet.res['uncorrected_var']
             prophet.res['corrected'] = self
             prophet.res['uncorrected_mean'] = prophet.res['mean'].copy()
             prophet.res['uncorrected_var'] = prophet.res['var'].copy()

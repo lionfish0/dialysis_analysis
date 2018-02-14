@@ -55,18 +55,20 @@ def build_population_prior_model(prophets):
                 p.frompatient.usedforpopmodel.append(ms)
     return ms        
         
-def compute_errors(prophets):
-    """Get the RMSE and MAE for all prophets"""
+def compute_errors(prophets,meantype='mean'):
+    """Get the RMSE and MAE for all prophets
+    
+    set meantype to 'uncorrected_mean' to use the non-delta model version"""
     errs = []
     for i in range(prophets[0].regions): errs.append([])
     for p in prophets:
         if not hasattr(p,'res'):
             if veryverbose: print("Skipping prophet as it has not had its results computed")
             continue
-        for reg,(pred,act) in enumerate(zip(p.res['mean'],p.get_actual())):
+        for reg,(pred,act) in enumerate(zip(p.res[meantype],p.get_actual())):
             if ~np.isnan(act):
                 if np.isnan(pred):
-                    print("Actual value known, but prediction is NaN.")
+                    #print("Actual value known, but prediction is NaN.")
                     #raise ProphetException("Actual value known, but prediction is NaN.")
                     continue #not sure we should just let this happen?
                 err = pred-act
@@ -138,7 +140,6 @@ def add_comorbidity_columns_to_df(data,main_df,date_column):
     Adds maxnumcomorbidities comorbidity columns to the table
     """
     maxnumcomorbidities = 14
-    
     if len(main_df)<1:
         return
     times_since = []
@@ -150,9 +151,10 @@ def add_comorbidity_columns_to_df(data,main_df,date_column):
             timesince[d[2]] = min(t,timesince[d[2]])
         times_since.append(timesince)
     times_since = np.array(times_since)
-    comorb_effect = 10/(10+times_since) #never = 0, now = 1, 10 days ago = 0.5
+    comorb_effect = 10.0/(10.0+times_since) #never = 0, now = 1, 10 days ago = 0.5
     for i in range(comorb_effect.shape[1]):
         main_df['comorbidity_factor_%d'%i] = comorb_effect[:,i]
+        main_df['has_comorbidity_%d'%i] = times_since[:,i]!=np.inf #have they had this comorbidity any time in the past?
         
 def add_comorbidity_columns(patients):
     """

@@ -12,6 +12,7 @@ import percache
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
 from dialysis_analysis.patient import Patient, PatientException
 from dialysis_analysis.prophet import Prophet, ProphetException
+import os
 
 verbose = True
 veryverbose = False

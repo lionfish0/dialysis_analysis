@@ -8,7 +8,6 @@ import GPy
 from dask import compute, delayed
 from dask.distributed import Client
 np.set_printoptions(precision=2,suppress=True)
-import dask_dp4gp
 import percache
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
 from dialysis_analysis.patient import Patient, PatientException
@@ -16,6 +15,25 @@ from dialysis_analysis.prophet import Prophet, ProphetException
 
 verbose = True
 veryverbose = False
+
+def install_libraries_on_workers(url,runlist = None):
+    """Install libraries if necessary on workers etc.
+    e.g. if already on server...
+    install_libraries_on_workers('127.0.0.1:8786')
+    """
+    
+    client = Client(url)
+    
+    if runlist is None:
+        runlist = ['pip install -U pip','sudo apt install libgl1-mesa-glx -y','conda update scipy -y','pip install git+https://github.com/sods/paramz.git','pip install git+https://github.com/SheffieldML/GPy.git','pip install git+https://github.com/lionfish0/dp4gp.git','conda install dask-searchcv -c conda-forge -y', 'pip install git+https://github.com/lionfish0/dask_dp4gp.git', 'pip install numpy', 'conda remove argcomplete -y','pip install git+https://github.com/lionfish0/dialysis_analysis.git']#, 'conda install python=3.6 -y']
+
+    for item in runlist:
+        print("Installing '%s' on workers..." % item)
+        client.run(os.system,item)
+        print("Installing '%s' on scheduler..." % item)
+        client.run_on_scheduler(os.system,item)    
+        #os.system(item) #if you need to install it locally too
+        
 
 def build_population_prior_model(prophets):
     priorX = []

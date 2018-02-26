@@ -170,7 +170,7 @@ def add_comorbidity_columns(patients):
         add_comorbidity_columns_to_df(data,p.dialysis,'num_date')
         add_comorbidity_columns_to_df(data,p.lab,'lt_date')
   
-def compute_results(prophets,ip='local'):
+def compute_results_chunk(prophets,ip):
     resultsget_predictions = []
     if ip=='local':
         for i, proph in enumerate(prophets):
@@ -187,7 +187,7 @@ def compute_results(prophets,ip='local'):
             client = Client(ip+':8786')
         print("adding prophets.get_prediction functions to delayobject list")
         for i, proph in enumerate(prophets):
-            getmodel = (i % 10)==0 #only get 1 in x models as these are too large to download
+            getmodel = (i % 100)==0 #only get 1 in x models as these are too large to download
             delayobjects.append(delayed(proph.get_predictions)(getmodel=getmodel))
             #delayobjects.append(delayed(test)(getmodel=getmodel))
         print("Computation Initiated")
@@ -195,6 +195,12 @@ def compute_results(prophets,ip='local'):
         print("Computation Complete")
         for proph,res in zip(prophets,results):
             proph.res = res
+
+def compute_results(prophets,ip='local'):
+    for chunk in np.arange(0,len(prophets),1000):
+        print("Computing %d of %d" % (chunk,len(prophets)))
+        currentprophets = prophets[chunk:(chunk+1000)]
+        compute_results_chunk(currentprophets,ip=ip)
 
 def loadpatientdata_fromfiles(datafiles):
     dial = pd.read_csv(datafiles['dial'],encoding='latin1')

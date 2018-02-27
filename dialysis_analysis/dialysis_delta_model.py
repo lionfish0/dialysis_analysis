@@ -14,7 +14,7 @@ class DeltaModelException(Exception):
         Exception.__init__(self,*args,**kwargs) 
         
 class DeltaModel():
-    def __init__(self,prophets,boxstds = 0.1,kerntype='RBF'):
+    def __init__(self,prophets,boxstds = 0.1,kerntype='RBF',optimize=True):
         regions = prophets[0].regions
         deltaregions = prophets[0].deltaregions
         deltamodels = []
@@ -57,7 +57,7 @@ class DeltaModel():
 
 
             m = GPy.models.GPRegression(deltaX,deltaY,k)
-            m.optimize()
+            if optimize: m.optimize()
             deltamodels.append(m)
         self.deltamodels = deltamodels
         self.prophets = prophets
@@ -85,6 +85,7 @@ class DeltaModel():
         l.extend([dl[0]+'('+dl[1]+')' for dl in p.delta_lab])    
         for dm,name in zip(self.deltamodels,regnames):
             if dm is None:
+                figi+=1
                 continue
             for i,reg in enumerate(l):
                 figi+=1
@@ -107,6 +108,8 @@ class DeltaModel():
         
         for prophet in prophets:
             if not hasattr(prophet,'res'):
+                continue
+            if prophet.res['mean'] is None:
                 continue
             if 'corrected' in prophet.res:
                 if not suppressduplicatemsgs: print("Warning: Applying delta-correction to already corrected prophet(s), overwriting previous delta corrections.")

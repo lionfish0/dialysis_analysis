@@ -54,7 +54,18 @@ def strseriestodatenum(l):
     return dates
        
        
-       
+def get_dict_of_comorbidity_flags(self,ps):
+    """
+    We need to know how the ComorbNum relates to the labels given in Flag.
+    This method solves this.
+    """
+    l = []
+    for p in ps:
+        l.extend(list(zip(list(p.comorbidity['Flag']),list(p.comorbidity['ComorbNum']))))
+    res = {}
+    for a in set(l):
+        res[a[1]] = a[0]
+    return res       
        
         
 class Patient(object): 
@@ -71,6 +82,10 @@ class Patient(object):
                 'dt_prescr_duration','dt_blood_volume','dt_prescr_blood_flow','dt_achiev_blood_flow',
                 'dt_weight_pre','dt_weight_post','dt_systolic_pre','dt_systolic_post','dt_diastolic_pre',
                 'dt_diastolic_post','dt_heart_rate_pre','dt_heart_rate_post']
+    
+    
+    #I ran the get_dict_of_comorbidty_flags method and have this result
+    dict_of_comorbidity_flags = {2: 'ASHD', 3: 'CAN', 4: 'CHF', 5: 'COPD', 6: 'CVA', 7: 'DEP', 8: 'DM', 9: 'DYSRT', 10: 'GI', 11: 'LD',  12: 'OthCard', 13: 'PVD'}
     
     def __init__(self, pat, dialysis, lab, hospital, comorbidity):
         """

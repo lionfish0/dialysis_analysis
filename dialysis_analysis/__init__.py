@@ -84,6 +84,12 @@ def compute_errors(prophets,meantype='mean'):
         if not hasattr(p,'res'):
             if veryverbose: print("Skipping prophet as it has not had its results computed")
             continue
+        if meantype not in p.res:
+            if veryverbose: print("Skipping prophet as %s is not in the results structure" % meantype)
+            continue
+        if p.res[meantype] is None:
+            if veryverbose: print("Skipping prophet as %s is None" % meantype)
+            continue            
         for reg,(pred,act) in enumerate(zip(p.res[meantype],p.get_actual())):
             if ~np.isnan(act):
                 if np.isnan(pred):
@@ -124,8 +130,12 @@ def compute_results_dataframe(prophets):
         row.append(vintage) #TODO Assumes first row is vintage
         
         if not hasattr(p,'res'):
-            #if veryverbose: print("Skipping prophet as it has not had its results computed")
+            if veryverbose: print("Skipping prophet as it has not had its results computed")
             continue
+        if p.res['mean'] is None:
+            if veryverbose: print("Skipping prophet as it has None as prediction")
+            continue
+            
         for reg,(pred,act) in enumerate(zip(p.res['mean'],p.get_actual())):
             row.append(act)
             row.append(pred[0])
@@ -153,6 +163,13 @@ def add_duration_shortfall(patients):
     for p in patients:
         p.dialysis['duration_shortfall'] = p.dialysis['dt_prescr_duration']-p.dialysis['dt_duration']
         
+def add_bloodflow_shortfall(patients):
+    """
+    Adds the bloodflow shortfall to the dialysis tables in all the patients in the list passed
+    """
+    for p in patients:
+        p.dialysis['blood_flow_shortfall'] = p.dialysis['dt_prescr_blood_flow']-p.dialysis['dt_achiev_blood_flow']
+        
         
 def add_comorbidity_columns_to_df(data,main_df,date_column):
     """
@@ -172,8 +189,10 @@ def add_comorbidity_columns_to_df(data,main_df,date_column):
     times_since = np.array(times_since)
     comorb_effect = 10.0/(10.0+times_since) #never = 0, now = 1, 10 days ago = 0.5
     for i in range(comorb_effect.shape[1]):
-        main_df['comorbidity_factor_%d'%i] = comorb_effect[:,i]
-        main_df['has_comorbidity_%d'%i] = times_since[:,i]!=np.inf #have they had this comorbidity any time in the past?
+        if i not in Patient.dict_of_comorbidity_flags: #skip comorbidities not in the dictionary
+            continue
+        main_df['comorbidity_factor_%s'%Patient.dict_of_comorbidity_flags[i]] = comorb_effect[:,i]
+        main_df['has_comorbidity_%s'%Patient.dict_of_comorbidity_flags[i]] = times_since[:,i]!=np.inf #have they had this comorbidity any time in the past?
         
 def add_comorbidity_columns(patients):
     """

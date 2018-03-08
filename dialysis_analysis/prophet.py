@@ -432,9 +432,8 @@ class Prophet(object):
             returnedmodel = {'normalmodel':m,'gradientmodels':ms}
         else:
             returnedmodel = None
-    
-        hyperparameters = {'values':m.param_array,'labels':m.parameter_names_flat()}
-        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':hyperparameters}
+
+        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':m.flattened_parameters}
     
 
 

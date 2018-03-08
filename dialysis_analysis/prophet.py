@@ -14,7 +14,7 @@ import percache
 from dialysis_analysis.plotting import plotmodel
 from dialysis_analysis import *
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
-verbose = True
+verbose = False
 veryverbose = False
 
 class ProphetException(Exception):
@@ -165,7 +165,7 @@ class Prophet(object):
         if len(X)<2:
             raise ProphetException('Fewer than two data points in training data (N=%d)' % len(X))
             
-        self.X = X
+        self.X = X.copy()
         self.regions = regions
         
         if prior_models is not None:
@@ -277,6 +277,8 @@ class Prophet(object):
         self.X = self.X[keep,:]
         self.Y = self.Y[keep,:]
 
+        if len(self.X)<2:
+            raise ProphetException("Removal of outliers has left this prophet with fewer than two training points.")
         keep = np.full(len(self.X),True)
 
         #print("iterating over %d regions" % self.regions)
@@ -362,14 +364,18 @@ class Prophet(object):
         y = y - np.mean(y) #we just remove the mean - we don't save this etc as we'll just be grabbing the gradient later
         m = GPy.models.GPRegression(x,y,kern)
         m.kern.lengthscale.fix(ls)
-        m.kern.variance = np.var(y) #no idea what to use for this!
-        #m.optimize()
+        m.kern.variance = 5*np.var(y) #no idea what to use for this!
+        m.optimize()
          
 
         testpoint = self.testX[0:1,0:1]
         delta = 0.001
         predmean, _ = m.predict(testpoint)
+        
         predmean_delta, _ = m.predict(testpoint+delta)
+        
+        #m.kern.lengthscale.fix(ls*10)
+        #predmean_delta, _ = m.predict(testpoint)
         
         #still untested - unnormalise delta inputs
         #delta isn't normalised! Don't need to unnormalise!
@@ -396,6 +402,7 @@ class Prophet(object):
     def get_predictions(self,getmodel=False):
         predmean, predvar, m = self.predict()
        
+
         ##delta model
         delta_values = []
         ms = []
@@ -409,7 +416,7 @@ class Prophet(object):
                 try:
                     grad, delta_m = self.get_delta_gradient(region,ls)
                 except ProphetException as e:
-                    if verbose: print("Failed to compute gradient, using 0 (error %s)" % e)
+                    if veryverbose: print("Failed to compute gradient, using 0 (error %s)" % e)
                     grad = 0.0
                     delta_m = None
                 delta_values.append(grad)
@@ -426,7 +433,8 @@ class Prophet(object):
         else:
             returnedmodel = None
     
-        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel}
+        hyperparameters = {'values':m.param_array,'labels':m.parameter_names_flat()}
+        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':hyperparameters}
     
 
 
@@ -511,16 +519,20 @@ class ProphetCoregionalised(ProphetGaussianProcess):
     """
     Prophets that use a coregionalised representation to make predictions.
     """
+    def __init__(self):
+        super().__init__()
+        self.secondICM = False
+
     def define_model(self):
         """
         """
         debuginfo = []
-        secondICM = True
+
         
         #this is an RBF over really just the vintage (coregionalised between all features)
         kern_baseline = (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf') \
             **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=self.baselinerank, name='baselinecoreg'))
-        if secondICM:
+        if self.secondICM:
             kern_baseline+= (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf2') \
                 **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=self.baselinerank, name='baselinecoreg2'))
 
@@ -541,7 +553,7 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
         m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
         m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
-        if secondICM:
+        if self.secondICM:
             m['.*baselinerbf2.variance'].fix(1,warning=False) #this is controlled now by kappa
             m['.*baselinerbf2.lengthscale'][1:].fix(100000,warning=False)
             m['.*baselinerbf2.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
@@ -569,7 +581,6 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         """
         """
         debuginfo = []
-        secondICM = True
         
         #this is an RBF over really just the vintage (coregionalised between all features)
         kern = (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf') \

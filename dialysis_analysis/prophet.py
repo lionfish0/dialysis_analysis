@@ -519,8 +519,8 @@ class ProphetCoregionalised(ProphetGaussianProcess):
     """
     Prophets that use a coregionalised representation to make predictions.
     """
-    def __init__(self):
-        super().__init__()
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.secondICM = False
 
     def define_model(self):
@@ -568,7 +568,7 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         m['.*white.variance'].fix(1,warning=False) #controlled by kappa
 
         m['.*dsdcoreg.W'].fix(0,warning=False) #we don't coregionalise DSD
-        m.Gaussian_noise.fix(0.01,warning=False) 
+        m.Gaussian_noise.fix(0.01,warning=False)
         return m
 
 class ProphetSimpleGaussian(ProphetGaussianProcess):
@@ -582,12 +582,15 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         """
         debuginfo = []
         
-        #this is an RBF over really just the vintage (coregionalised between all features)
+        #TODO SORT THIS OUT!
+        raise NotImplementedError
+        #this is an RBF over really just the vintage
         kern = (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf') \
-            **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=0, name='baselinecoreg'))
+            **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=1, name='baselinecoreg'))
 
         m = GPy.models.GPRegression(self.X,self.Y,kern)
 
+        m['.*baselinecoreg.W'][:,:].fix(0,warning=False)
         m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
         #m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
         m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)

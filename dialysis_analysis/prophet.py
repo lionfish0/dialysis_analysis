@@ -17,6 +17,23 @@ cache = percache.Cache("cache") #some of the methods to load patient data are ca
 verbose = False
 veryverbose = False
 
+def get_params(p,labelstring=""):
+    """
+    Get a dictionary of the hyperparameters that describe the model.
+    
+    E.g. get_params(model)
+    """
+    if len(labelstring)>0:
+        labelstring = labelstring + "." + p.name
+    else:
+        labelstring = p.name
+    params = {}
+    for param in p.parameters:
+        params = {**params, **get_params(param,labelstring)}
+    if hasattr(p,'values'):
+        params[labelstring] = p.values
+    return params
+
 class ProphetException(Exception):
     def __init__(self,*args,**kwargs):
         Exception.__init__(self,*args,**kwargs) 
@@ -433,7 +450,7 @@ class Prophet(object):
         else:
             returnedmodel = None
 
-        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel}#, 'hyperparameters':m.flattened_parameters}
+        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':get_params(m)}
     
 
 

@@ -13,9 +13,12 @@ cache = percache.Cache("cache") #some of the methods to load patient data are ca
 from dialysis_analysis.patient import Patient, PatientException
 from dialysis_analysis.prophet import Prophet, ProphetException
 import os
+import importlib
 
 verbose = True
 veryverbose = False
+
+
 
 def install_libraries_on_workers(url,runlist = None):
     """Install libraries if necessary on workers etc.
@@ -34,7 +37,14 @@ def install_libraries_on_workers(url,runlist = None):
         print("Installing '%s' on scheduler..." % item)
         client.run_on_scheduler(os.system,item)    
         #os.system(item) #if you need to install it locally too
-        
+
+def reload_modules_on_workers(url,modulelist = None):
+    """Run reload(module) on the items in the modulelist"""
+    client = Client(url)
+    for mod in modulelist:
+        print("reloading %s" % mod)
+        client.run(importlib.reload,mod)
+        client.run_on_scheduler(importlib.reload,mod)
 
 def build_population_prior_model(prophets):
     priorX = []

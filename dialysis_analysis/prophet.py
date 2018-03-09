@@ -582,7 +582,7 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         debuginfo = []
         
         #TODO SORT THIS OUT!
-        raise NotImplementedError
+        #raise NotImplementedError
         #this is an RBF over really just the vintage
         kern = (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf') \
             **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=1, name='baselinecoreg'))

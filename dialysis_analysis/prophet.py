@@ -433,7 +433,7 @@ class Prophet(object):
         else:
             returnedmodel = None
 
-        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':m.flattened_parameters}
+        return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel}#, 'hyperparameters':m.flattened_parameters}
     
 
 

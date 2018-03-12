@@ -23,6 +23,8 @@ def get_params(p,labelstring=""):
     
     E.g. get_params(model)
     """
+    if p is None:
+        return {}
     if len(labelstring)>0:
         labelstring = labelstring + "." + p.name
     else:

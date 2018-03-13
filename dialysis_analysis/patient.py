@@ -269,6 +269,7 @@ class Patient(object):
         keep = fullXdial[:,0]>(startfullresvintage)
         keep[np.random.choice(len(keep),int(len(keep)*keepratio))]=True
         fullXdial = fullXdial[keep,:]
+        Ydial = Ydial[keep,:]
         
         X = np.r_[fullXdial,fullXlab]
         Y = np.r_[Ydial,Ylab]

@@ -191,7 +191,7 @@ class Patient(object):
                 
         
         
-    def build_model_matrices(self,inputdialysis,outputdialysis,outputlab,startvintage,endvintage):
+    def build_model_matrices(self,inputdialysis,outputdialysis,outputlab,startvintage,endvintage,startfullresvintage=0,keepratio=0.25):
         """
         Parameters:
         
@@ -214,6 +214,8 @@ class Patient(object):
             Which variables we want as outputs of the model?
             
         startvintage and endvintage: time period to include in matrices INCLUSIVE
+        startfullresvintage: when should every dialysis session be included?
+        keepratio: what proportion of earlier dialysis sessions should we keep?
             
         Returns matrices X and Y
         """
@@ -263,6 +265,10 @@ class Patient(object):
             fullXlab = np.r_[fullXlab,np.c_[Xlab,indx*np.ones([N,1])]]
             indx+=1
         
+        #we only keep some of the older dialysis sessions
+        keep = fullXdial[:,0]>(startfullresvintage)
+        keep[np.random.choice(len(keep),int(len(keep)*keepratio))]=True
+        fullXdial = fullXdial[keep,:]
         
         X = np.r_[fullXdial,fullXlab]
         Y = np.r_[Ydial,Ylab]
@@ -272,7 +278,7 @@ class Patient(object):
         Y = Y[included,:]
         return X,Y
 
-    def generate_prophet(self,prophetclass,date,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,prior_means=None,prior_models=None):
+    def generate_prophet(self,prophetclass,date,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,prior_means=None,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
         """
         Produces a prophet prediction object for time point 'date' for the patient.
         
@@ -289,9 +295,11 @@ class Patient(object):
             - abs = absolute (actual value)
             - grad = the gradient from the simple model (a third item in the tuple can be added to specify the lengthscale)
             - diff = difference (whether we will just be considering the difference since the last measurement)
+        fullrestraininglength = how long we should use every dialysis session prior to prediction
+        keepratio = what proportion of dialysis sessions we should use before that.            
         """
-        
-        X, Y = self.build_model_matrices(inputdialysis, outputdialysis, outputlab, date-traininglength, date-1)
+
+        X, Y = self.build_model_matrices(inputdialysis, outputdialysis, outputlab, date-traininglength, date-1,date-fullrestraininglength,keepratio)
         testX,testY = self.build_model_matrices(inputdialysis, outputdialysis, outputlab, date, date)
         if len(X)<3:
             raise PatientException("Fewer than three training points.")
@@ -321,7 +329,7 @@ class Patient(object):
         return prophetclass(X,Y,testX,testY,regions,deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
 
 
-    def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None):
+    def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
         """
         Produces a prediction object for every time point in the dialysis of the patient.
         See generate_prophet for parameter details.
@@ -342,12 +350,12 @@ class Patient(object):
                                           inputdialysis,outputdialysis,
                                           outputlab,
                                           delta_dialysis,delta_lab,
-                                          prior_models=prior_models))
+                                          prior_models=prior_models,fullrestraininglength=fullrestraininglength,keepratio=keepratio))
             except PatientException as e:
                 if verbose: print("skipping time point %d (%s)" % (d,e))
         return prophets
     
-    def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,prehospitalperiod=np.inf,prior_models=None):
+    def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,prehospitalperiod=np.inf,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
         """
         Produces a prediction object for every time point in the dialysis of the patient in the run up to their hospitalisations.
         See generate_prophet for parameter details.
@@ -366,7 +374,7 @@ class Patient(object):
                                           inputdialysis,outputdialysis,
                                           outputlab,
                                           delta_dialysis,delta_lab,
-                                          prior_models=prior_models))
+                                          prior_models=prior_models,fullrestraininglength=fullrestraininglength,keepratio=keepratio))
             except PatientException as e:
                 if verbose: print("skipping time point %d (%s)" % (d,e))
         return prophets 

@@ -83,11 +83,20 @@ def build_population_prior_model(prophets):
             if p.frompatient is not None: 
                 p.frompatient.usedforpopmodel.append(ms)
     return ms        
-        
+
+
 def compute_errors(prophets,meantype='mean'):
-    """Get the RMSE and MAE for all prophets
+    """Get the RMSE and MAE for all prophets.
     
-    set meantype to 'uncorrected_mean' to use the non-delta model version"""
+    set meantype to 'uncorrected_mean' to use the non-delta model version.
+    
+    Specifically the function returns arrays of:
+    Mean Absolute Error (mae)
+    Root Mean Squared Error (rmse)
+    The standard deviation of the MAE estimates
+    The standard deviation of the RMSE estimates
+    The total number of results used to compute each estimate
+    """
     errs = []
     for i in range(prophets[0].regions): errs.append([])
     for p in prophets:
@@ -110,10 +119,27 @@ def compute_errors(prophets,meantype='mean'):
                 errs[reg].append(err)
     mae = []
     rmse = []
-    for err in errs:
-        mae.append(np.mean(np.abs(err)))
-        rmse.append(np.sqrt(np.mean(np.array(err)**2)))
-    return mae, rmse
+    count = []
+    mae_std = []
+    rmse_std = []
+    for allerr in errs:
+        mae.append(np.mean(np.abs(allerr)))
+        listoferrs = []
+        for it in range(500):
+            err = np.random.choice(np.array(allerr)[:,0],len(allerr),replace=True)
+            listoferrs.append(np.mean(np.abs(err)))
+        mae_std.append(np.std(listoferrs))
+        
+        rmse.append(np.sqrt(np.mean(np.array(allerr)**2)))
+        listoferrs = []
+        for it in range(500):
+            err = np.random.choice(np.array(allerr)[:,0],len(allerr),replace=True)
+            listoferrs.append(np.sqrt(np.mean(np.array(err)**2)))
+        rmse_std.append(np.std(listoferrs))
+        count.append(len(err))        
+    return np.array(mae), np.array(rmse), np.array(mae_std), np.array(rmse_std), np.array(count)
+
+
 
 def get_days_til_hospitalisation(prophet,vintage):
     daystil = prophet.frompatient.hospital['hp_date_start_num']-vintage

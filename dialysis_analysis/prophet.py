@@ -220,6 +220,8 @@ class Prophet(object):
         self.delta_lab=delta_lab
         
         self.baselinerank = 1 #TODO Make this flexible
+        
+        self.optimize_model = True
               
     def print(self):
         print("Demographics of source patient")
@@ -384,7 +386,8 @@ class Prophet(object):
         m = GPy.models.GPRegression(x,y,kern)
         m.kern.lengthscale.fix(ls)
         m.kern.variance = 5*np.var(y) #no idea what to use for this!
-        m.optimize()
+        if self.optimize_model:
+            m.optimize()
          
 
         testpoint = self.testX[0:1,0:1]
@@ -522,10 +525,11 @@ class ProphetGaussianProcess(Prophet):
     """
     def predict(self):
         m = self.define_model()
-        try:
-            m.optimize()
-        except np.linalg.LinAlgError:
-            return None, None, None
+        if self.optimize_model:
+            try:
+                m.optimize()
+            except np.linalg.LinAlgError:
+                return None, None, None
         testpoints = np.repeat(self.testX[0:1,0:-1],self.regions,0)    
         testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
         normalised_predmean, normalised_predvar = m.predict(testpoints)
@@ -587,6 +591,17 @@ class ProphetCoregionalised(ProphetGaussianProcess):
 
         m['.*dsdcoreg.W'].fix(0,warning=False) #we don't coregionalise DSD
         m.Gaussian_noise.fix(0.01,warning=False)
+        
+        
+        #Setting hyperparameters to promising looking values from cohort
+        m['sum.mul.baselinerbf.lengthscale'][0] = 50 #bit longer!
+        m['sum.mul.baselinecoreg.W'] = np.array([[-0.4,-0.5,-0.5,0.125,-0.15,0.2,0.25,0]]).T
+        m['sum.mul.baselinecoreg.kappa'] = 0.00001
+        m['sum.mul_1.dsdrbf.lengthscale'] = 50
+        m['sum.mul_1.dsdcoreg.kappa'] = 0.00001
+        m['sum.mul_2.whitenoise.kappa'] = np.array([0.8,0.85,0.8,0.8,0.6,0.6,0.2,0.1]).T
+        m['Gaussian_noise.variance'] = 0.01
+
         return m
 
 class ProphetSimpleGaussian(ProphetGaussianProcess):

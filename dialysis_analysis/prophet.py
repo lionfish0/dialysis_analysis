@@ -594,13 +594,13 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         
         
         #Setting hyperparameters to promising looking values from cohort
-        m['sum.mul.baselinerbf.lengthscale'][0] = 50 #bit longer!
-        m['sum.mul.baselinecoreg.W'] = np.array([[-0.4,-0.5,-0.5,0.125,-0.15,0.2,0.25,0]]).T
-        m['sum.mul.baselinecoreg.kappa'] = 0.00001
-        m['sum.mul_1.dsdrbf.lengthscale'] = 50
-        m['sum.mul_1.dsdcoreg.kappa'] = 0.00001
-        m['sum.mul_2.whitenoise.kappa'] = np.array([0.8,0.85,0.8,0.8,0.6,0.6,0.2,0.1]).T
-        m['Gaussian_noise.variance'] = 0.01
+        #m['sum.mul.baselinerbf.lengthscale'][0] = 50 #bit longer!
+        #m['sum.mul.baselinecoreg.W'] = np.array([[-0.4,-0.5,-0.5,0.125,-0.15,0.2,0.25,0]]).T
+        #m['sum.mul.baselinecoreg.kappa'] = 0.00001
+        #m['sum.mul_1.dsdrbf.lengthscale'] = 50
+        #m['sum.mul_1.dsdcoreg.kappa'] = 0.00001
+        #m['sum.mul_2.whitenoise.kappa'] = np.array([0.8,0.85,0.8,0.8,0.6,0.6,0.2,0.1]).T
+        #m['Gaussian_noise.variance'] = 0.01
 
         return m
 

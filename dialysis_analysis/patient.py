@@ -13,9 +13,54 @@ import dask_dp4gp
 import percache
 from dialysis_analysis import *
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
+from scipy.stats import pearsonr
 
 verbose = False
 veryverbose = False
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+def hinton(matrix, max_weight=None, ax=None):
+    
+    """
+    Draw Hinton diagram for visualizing a weight matrix.
+    
+    From https://matplotlib.org/examples/specialty_plots/hinton_demo.html
+    Demo of a function to create Hinton diagrams.
+
+    Hinton diagrams are useful for visualizing the values of a 2D array (e.g.
+    a weight matrix): Positive and negative values are represented by white and
+    black squares, respectively, and the size of each square represents the
+    magnitude of each value.
+
+    Initial idea from David Warde-Farley on the SciPy Cookbook
+    """
+    ax = ax if ax is not None else plt.gca()
+
+    if not max_weight:
+        max_weight = 2 ** np.ceil(np.log(np.abs(matrix).max()) / np.log(2))
+
+    ax.patch.set_facecolor('gray')
+    ax.set_aspect('equal', 'box')
+    ax.xaxis.set_major_locator(plt.NullLocator())
+    ax.yaxis.set_major_locator(plt.NullLocator())
+
+    for (x, y), w in np.ndenumerate(matrix):
+        color = 'white' if w > 0 else 'black'
+        size = np.sqrt(np.abs(w) / max_weight)
+        rect = plt.Rectangle([x - size / 2, y - size / 2], size, size,
+                             facecolor=color, edgecolor=color)
+        ax.add_patch(rect)
+
+    ax.autoscale_view()
+    ax.invert_yaxis()
+    
+def plot_correlations(correlationmatrix,correlationlabels):
+    hinton(correlationmatrix,1.0)
+    plt.xticks(np.arange(0,len(correlationlabels)),correlationlabels,rotation=90)
+    plt.yticks(np.arange(0,len(correlationlabels)),correlationlabels);
+    
 
 class PatientException(Exception):
     def __init__(self,*args,**kwargs):
@@ -188,8 +233,54 @@ class Patient(object):
         hospdates = np.array(hospdates)
         self.hospital['hp_date_start_num'] = hospdates
         
-                
         
+    def get_correlation(self,sparsify=1,diffs=False):
+        """Computes a correlation matrix between variables. Leaves out some of the data if absent.
+        Returns a correlation matrix, and the labels of the data used."""
+        df = pd.merge(left=self.dialysis,right=self.lab, left_on='num_date', right_on='lt_date')
+        variables = ['dt_duration','days_since_dialysis','dt_prescr_duration','dt_achiev_duration','dt_blood_volume','dt_prescr_blood_flow',
+             'dt_achiev_blood_flow','dt_dialysate_flow','dt_weight_pre','dt_weight_post','dt_systolic_pre',
+             'dt_systolic_post','dt_diastolic_pre','dt_diastolic_post','dt_heart_rate_pre','dt_heart_rate_post',
+             'dt_va_max_flow','weight_change_rate','duration_shortfall','dt_pulse_pressure_post',
+             'dt_pulse_pressure_pre','dt_systolic_drop','blood_flow_shortfall','lt_value_albumin','lt_value_calcium',
+             'lt_value_cholesterol','lt_value_crp','lt_value_ferritin','lt_value_hdl','lt_value_hb','lt_value_iron',
+             'lt_value_pth','lt_value_transferrin','lt_value_wbc','lt_value_phosphate','lt_value_ureapre',
+             'lt_value_ureapost','lt_value_triglycerides','lt_value_ldl','lt_value_tsat','lt_value_ekt_v',
+             'lt_value_creatinine','lt_value_k','lt_value_na','lt_value_totprot','lt_value_rbc',
+             'lt_value_hba1c','lt_value_b2m','lt_value_glycemia','lt_value_platelets',
+             'lt_value_prealb','lt_value_folates','lt_value_uricac','lt_value_b12','lt_value_alp']
+        shortvariables = ['dur','dsd','prs_dur','ach_dur','blood_vol','prs_bl_flw',
+             'ach_bl_flw','dial_flw','wei_pre','wei_post','sys_pre',
+             'sys_post','dia_pre','dia_post','hr_pre','hr_post',
+             'va_maxflw','wei_chng_rt','dur_short','pulspres_post',
+             'pulspres_pre','sys_drop','bl_flw_short','albumin','calcium',
+             'cholest','crp','ferritin','hdl','hb','iron',
+             'pth','transferrin','wbc','phosphate','ureapre',
+             'ureapost','triglycerides','ldl','tsat','ekt_v',
+             'creatinine','k','na','totprot','rbc',
+             'hba1c','b2m','glycemia','platelets',
+             'prealb','folates','uricac','b12','alp']             
+        df1 = pd.DataFrame(df, columns=variables)
+        if diffs:
+            df1 = df1.diff()
+#        mat = np.array(df1[::sparsify].corr(),dtype=float)
+#        mat[np.isnan(mat)]=0
+#        return mat, variables, shortvariables
+#        corrs, stats = np.zeros([len(variables),len(variables)]), np.zeros([len(variables),len(variables)])
+        corrs = np.full([len(variables),len(variables)],np.nan)
+        stats = corrs.copy()
+        lens = corrs.copy()
+        for i1,c1 in enumerate(df1.columns):
+            for i2,c2 in enumerate(df1.columns):
+                if i1<i2:
+                    pass
+                df_clean = df1[[c1,c2]].dropna()
+                corrs[i1,i2], stats[i1,i2] = pearsonr(df_clean.iloc[::sparsify,0],df_clean.iloc[::sparsify,1])
+                lens[i1,i2] = len(df_clean.iloc[::sparsify,0])
+        if diffs:
+            self.diff_correlations = {'corrs':corrs, 'stats':stats, 'lens':lens, 'variables':variables, 'shortvariables':shortvariables,'df':df1}
+        else:
+            self.correlations = {'corrs':corrs, 'stats':stats, 'lens':lens, 'variables':variables, 'shortvariables':shortvariables,'df':df1}            
         
     def build_model_matrices(self,inputdialysis,outputdialysis,outputlab,startvintage,endvintage,startfullresvintage=0,keepratio=0.25):
         """

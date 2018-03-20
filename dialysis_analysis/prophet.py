@@ -220,7 +220,7 @@ class Prophet(object):
         self.delta_lab=delta_lab
         
         self.baselinerank = 1 #TODO Make this flexible
-        
+        self.fix_W_preoptimization = False
         self.optimize_model = True
               
     def print(self):
@@ -603,6 +603,34 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         #m['Gaussian_noise.variance'] = 0.01
 
         return m
+        
+    def predict(self):
+        m = self.define_model()
+        if self.fix_W_preoptimization:
+            m.mul.coregion.W.fix(0)
+        
+        if self.optimize_model:
+            try:
+                m.optimize()
+            except np.linalg.LinAlgError:
+                return None, None, None
+                
+        #fix everything and unfix coreg.
+        if self.fix_W_preoptimization:        
+            m.fix()
+            m.mul.coregion.W.unfix()
+            m.mul.coregion.W = np.random.randn(m.mul.coregion.W.shape[0],m.mul.coregion.W.shape[1])
+            
+            if self.optimize_model:
+                try:
+                    m.optimize()
+                except np.linalg.LinAlgError:
+                    return None, None, None
+        
+        testpoints = np.repeat(self.testX[0:1,0:-1],self.regions,0)    
+        testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
+        normalised_predmean, normalised_predvar = m.predict(testpoints)
+        return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), m
 
 class ProphetSimpleGaussian(ProphetGaussianProcess):
     """

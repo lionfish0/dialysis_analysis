@@ -607,7 +607,7 @@ class ProphetCoregionalised(ProphetGaussianProcess):
     def predict(self):
         m = self.define_model()
         if self.fix_W_preoptimization:
-            m.mul.coregion.W.fix(0)
+            m.sum.mul.baselinecoreg.W(0)
         
         if self.optimize_model:
             try:
@@ -618,8 +618,8 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         #fix everything and unfix coreg.
         if self.fix_W_preoptimization:        
             m.fix()
-            m.mul.coregion.W.unfix()
-            m.mul.coregion.W = np.random.randn(m.mul.coregion.W.shape[0],m.mul.coregion.W.shape[1])
+            m.sum.mul.baselinecoreg.W.unfix()
+            m.sum.mul.baselinecoreg.W = np.random.randn(m.sum.mul.baselinecoreg.W.shape[0],m.sum.mul.baselinecoreg.W.shape[1])
             
             if self.optimize_model:
                 try:

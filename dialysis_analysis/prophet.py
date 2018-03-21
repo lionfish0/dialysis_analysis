@@ -222,6 +222,7 @@ class Prophet(object):
         self.baselinerank = 1 #TODO Make this flexible
         self.fix_W_preoptimization = False
         self.optimize_model = True
+        self.lsprior = 250
               
     def print(self):
         print("Demographics of source patient")
@@ -574,16 +575,16 @@ class ProphetCoregionalised(ProphetGaussianProcess):
 
         m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
         m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
-        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
+        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)
         if self.secondICM:
             m['.*baselinerbf2.variance'].fix(1,warning=False) #this is controlled now by kappa
             m['.*baselinerbf2.lengthscale'][1:].fix(100000,warning=False)
-            m['.*baselinerbf2.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
+            m['.*baselinerbf2.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)
 
-        m['.*dsdrbf.lengthscale'].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
+        m['.*dsdrbf.lengthscale'].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)
         m['.*dsdrbf.variance'].fix(1,warning=False) #this is controlled now by kappa
         #m['.*baseline.kappa']=10 #start off big to reduce temptation to over-coregionalise
-        m['.*dsdlinear.variances'].fix(1,warning=False) #this is controlled by kappa
+        #####m['.*dsdlinear.variances'].fix(1,warning=False) #this is controlled by kappa ##
 
         #this makes the white noise non-coregionalised
         m['.*whitenoise.W'][:,:].constrain_fixed(0,warning=False)
@@ -654,6 +655,6 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         m['.*baselinecoreg.W'][:,:].fix(0,warning=False)
         m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
         #m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
-        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(250),0.3),warning=False)
+        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)
         #m.Gaussian_noise.fix(0.01,warning=False) 
         return m

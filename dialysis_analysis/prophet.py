@@ -654,6 +654,6 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         m['.*baselinecoreg.W'][:,:].fix(0,warning=False)
         m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
         #m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
-        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(50),0.3),warning=False)
+        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(250),0.3),warning=False)
         #m.Gaussian_noise.fix(0.01,warning=False) 
         return m

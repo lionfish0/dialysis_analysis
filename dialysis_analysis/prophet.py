@@ -55,6 +55,8 @@ class Prophet(object):
         for m in ms:
             if m is not None:
                 pred, _ = m.predict(np.array(self.demographics_vector())[None,:])
+                if hasattr(m,'bias'):
+                    pred+=m.bias
                 preds.append(pred[0,0])
             else:
                 preds.append(None)

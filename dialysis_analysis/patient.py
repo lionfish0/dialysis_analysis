@@ -434,7 +434,7 @@ class Patient(object):
         prophets = []
         for d in self.dialysis['num_date'][0::skipstep]:
             if d>=stopearly:
-                print("Stopped early")
+                #print("Stopped early")
                 break
             try:
                 prophets.append(

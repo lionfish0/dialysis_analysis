@@ -29,13 +29,15 @@ def install_libraries_on_workers(url,runlist = None):
     client = Client(url)
     
     if runlist is None:
-        runlist = ['pip install -U pip','sudo apt install libgl1-mesa-glx -y','conda update scipy -y','pip install git+https://github.com/sods/paramz.git','pip install git+https://github.com/SheffieldML/GPy.git','pip install git+https://github.com/lionfish0/dp4gp.git','conda install dask-searchcv -c conda-forge -y', 'pip install git+https://github.com/lionfish0/dask_dp4gp.git', 'pip install numpy', 'conda remove argcomplete -y','pip install git+https://github.com/lionfish0/dialysis_analysis.git --upgrade']#, 'conda install python=3.6 -y']
+        runlist = ['sudo apt-get -y install build-essential','pip install -U pip','sudo apt install libgl1-mesa-glx -y','conda update scipy -y','pip install git+https://github.com/sods/paramz.git','pip install git+https://github.com/SheffieldML/GPy.git','pip install git+https://github.com/lionfish0/dp4gp.git','conda install dask-searchcv -c conda-forge -y', 'pip install git+https://github.com/lionfish0/dask_dp4gp.git', 'pip install numpy', 'conda remove argcomplete -y','pip install git+https://github.com/lionfish0/dialysis_analysis.git --upgrade']#, 'conda install python=3.6 -y']
 
     for item in runlist:
         print("Installing '%s' on workers..." % item)
-        client.run(os.system,item)
+        res = client.run(os.system,item)
+        print(res)
         print("Installing '%s' on scheduler..." % item)
-        client.run_on_scheduler(os.system,item)    
+        res = client.run_on_scheduler(os.system,item)    
+        print(res)
         #os.system(item) #if you need to install it locally too
 
 def reload_modules_on_workers(url,modulelist = None):
@@ -158,6 +160,7 @@ def compute_results_dataframe(prophets):
         colnames.append(r+" (actual)")
         colnames.append(r+" (predicted)")
     colnames.append('Days until hospitalisation')
+    colnames.append('Date')
     for i,p in enumerate(prophets):
         row = []
         row.append(i)
@@ -177,6 +180,8 @@ def compute_results_dataframe(prophets):
             row.append(pred[0])
             
         row.append(get_days_til_hospitalisation(p,vintage))
+        #get actual date
+        row.append(p.frompatient.dialysis[p.frompatient.dialysis['num_date']==p.testX[0,0]]['dt_date'].values[0])
         data.append(row)
     df = pd.DataFrame(data,columns=colnames)
     return df
@@ -270,10 +275,10 @@ def compute_results_chunk(prophets,ip):
         for proph,res in zip(prophets,results):
             proph.res = res
 
-def compute_results(prophets,ip='local'):
-    for chunk in np.arange(0,len(prophets),1000):
+def compute_results(prophets,chunksize=1000,ip='local'):
+    for chunk in np.arange(0,len(prophets),chunksize):
         print("Computing %d of %d" % (chunk,len(prophets)))
-        currentprophets = prophets[chunk:(chunk+1000)]
+        currentprophets = prophets[chunk:(chunk+chunksize)]
         compute_results_chunk(currentprophets,ip=ip)
 
 def loadpatientdata_fromfiles(datafiles):

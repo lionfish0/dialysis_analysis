@@ -14,6 +14,7 @@ import percache
 from dialysis_analysis import *
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
 from scipy.stats import pearsonr
+from dialysis_analysis.prophet import ProphetException
 
 verbose = False
 veryverbose = False
@@ -444,7 +445,9 @@ class Patient(object):
                                           delta_dialysis,delta_lab,
                                           prior_models=prior_models,fullrestraininglength=fullrestraininglength,keepratio=keepratio))
             except PatientException as e:
-                if verbose: print("skipping time point %d (%s)" % (d,e))
+                if verbose: print("PatientException: skipping time point %d (%s)" % (d,e))
+            except ProphetException as e:
+                if verbose: print("ProphetException: skipping time point %d (%s)" % (d,e))
         return prophets
     
     def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,prehospitalperiod=np.inf,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
@@ -468,7 +471,9 @@ class Patient(object):
                                           delta_dialysis,delta_lab,
                                           prior_models=prior_models,fullrestraininglength=fullrestraininglength,keepratio=keepratio))
             except PatientException as e:
-                if verbose: print("skipping time point %d (%s)" % (d,e))
+                if verbose: print("PatientException: skipping time point %d (%s)" % (d,e))
+            except ProphetException as e:
+                if verbose: print("ProphetException: skipping time point %d (%s)" % (d,e))
         return prophets 
     
     def plot():

@@ -460,7 +460,7 @@ class Prophet(object):
             else:
                 returnedmodel = None
 
-        except np.linalg.LinAlgError:
+        except: #catch anything. np.linalg.LinAlgError:
             predmean = np.nan
             predvar = np.nan
             delta_values = []

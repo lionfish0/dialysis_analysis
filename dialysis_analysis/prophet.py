@@ -425,8 +425,13 @@ class Prophet(object):
         raise NotImplementedError
 
     def get_predictions(self,getmodel=False):
-        predmean, predvar, m = self.predict()
-       
+        try:
+            predmean, predvar, m = self.predict()
+        except np.linalg.linalg.LinAlgError:
+            predmean = np.nan
+            predvar = np.nan
+            m = None
+            
 
         ##delta model
         delta_values = []

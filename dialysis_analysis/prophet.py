@@ -460,7 +460,7 @@ class Prophet(object):
             else:
                 returnedmodel = None
 
-        except np.linalg.linalg.LinAlgError:
+        except np.linalg.LinAlgError:
             predmean = np.nan
             predvar = np.nan
             delta_values = []
@@ -617,31 +617,30 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         return m
         
     def predict(self):
-        m = self.define_model()
-        if self.fix_W_preoptimization:
-            m.sum.mul.baselinecoreg.W.fix(0)
-        
-        if self.optimize_model:
-            try:
-                m.optimize()
-            except np.linalg.LinAlgError:
-                return None, None, None
-                
-        #fix everything and unfix coreg.
-        if self.fix_W_preoptimization:        
-            m.fix()
-            m.sum.mul.baselinecoreg.W.unfix()
-            m.sum.mul.baselinecoreg.W = np.random.randn(m.sum.mul.baselinecoreg.W.shape[0],m.sum.mul.baselinecoreg.W.shape[1])
+        try:
+            m = self.define_model()
+            
+            if self.fix_W_preoptimization:
+                m.sum.mul.baselinecoreg.W.fix(0)
             
             if self.optimize_model:
-                try:
-                    m.optimize()
-                except np.linalg.LinAlgError:
-                    return None, None, None
+                m.optimize()
         
-        testpoints = np.repeat(self.testX[0:1,0:-1],self.regions,0)    
-        testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
-        normalised_predmean, normalised_predvar = m.predict(testpoints)
+                
+            #fix everything and unfix coreg.
+            if self.fix_W_preoptimization:        
+                m.fix()
+                m.sum.mul.baselinecoreg.W.unfix()
+                m.sum.mul.baselinecoreg.W = np.random.randn(m.sum.mul.baselinecoreg.W.shape[0],m.sum.mul.baselinecoreg.W.shape[1])
+                
+                if self.optimize_model:
+                    m.optimize()
+
+            testpoints = np.repeat(self.testX[0:1,0:-1],self.regions,0)    
+            testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
+            normalised_predmean, normalised_predvar = m.predict(testpoints)
+        except np.linalg.LinAlgError:
+            return None, None, None
         return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), m
 
 class ProphetSimpleGaussian(ProphetGaussianProcess):

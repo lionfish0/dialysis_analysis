@@ -427,42 +427,46 @@ class Prophet(object):
     def get_predictions(self,getmodel=False):
         try:
             predmean, predvar, m = self.predict()
+            
+                
+
+            ##delta model
+            delta_values = []
+            ms = []
+            for floatregion in range(self.deltaregions):            
+                region = int(floatregion)
+                if self.deltaOption[region][0]=='grad':                
+                    if len(self.deltaOption[region])>1:
+                        ls = self.deltaOption[region][1] #lengthscale can be 2nd element of tuple
+                    else:
+                        ls = None
+                    try:
+                        grad, delta_m = self.get_delta_gradient(region,ls)
+                    except ProphetException as e:
+                        if veryverbose: print("Failed to compute gradient, using 0 (error %s)" % e)
+                        grad = 0.0
+                        delta_m = None
+                    delta_values.append(grad)
+                if self.deltaOption[region][0]=='diff':
+                    delta_m = None
+                    delta_values.append(self.get_delta_diff(region))
+                if self.deltaOption[region][0]=='abs':                
+                    delta_m = None
+                    delta_values.append(self.get_delta_abs(region))
+                ms.append(delta_m)
+                
+            if getmodel:
+                returnedmodel = {'normalmodel':m,'gradientmodels':ms}
+            else:
+                returnedmodel = None
+
         except np.linalg.linalg.LinAlgError:
             predmean = np.nan
             predvar = np.nan
-            m = None
-            
-
-        ##delta model
-        delta_values = []
-        ms = []
-        for floatregion in range(self.deltaregions):            
-            region = int(floatregion)
-            if self.deltaOption[region][0]=='grad':                
-                if len(self.deltaOption[region])>1:
-                    ls = self.deltaOption[region][1] #lengthscale can be 2nd element of tuple
-                else:
-                    ls = None
-                try:
-                    grad, delta_m = self.get_delta_gradient(region,ls)
-                except ProphetException as e:
-                    if veryverbose: print("Failed to compute gradient, using 0 (error %s)" % e)
-                    grad = 0.0
-                    delta_m = None
-                delta_values.append(grad)
-            if self.deltaOption[region][0]=='diff':
-                delta_m = None
-                delta_values.append(self.get_delta_diff(region))
-            if self.deltaOption[region][0]=='abs':                
-                delta_m = None
-                delta_values.append(self.get_delta_abs(region))
-            ms.append(delta_m)
-            
-        if getmodel:
-            returnedmodel = {'normalmodel':m,'gradientmodels':ms}
-        else:
+            delta_values = []
             returnedmodel = None
-
+            hyperparameters = None
+                        
         return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':get_params(m)}
     
 

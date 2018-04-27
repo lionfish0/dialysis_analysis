@@ -279,7 +279,22 @@ def compute_results(prophets,chunksize=1000,ip='local'):
     for chunk in np.arange(0,len(prophets),chunksize):
         print("Computing %d of %d" % (chunk,len(prophets)))
         currentprophets = prophets[chunk:(chunk+chunksize)]
-        compute_results_chunk(currentprophets,ip=ip)
+        try:
+            compute_results_chunk(currentprophets,ip=ip)
+        except:
+            print("Exception occured in one of the predictions, running seperately")
+            for minichunk in np.arange(chunk,chunk+chunksize,20): #run in batches of 100 instead of chunksize
+                minicurrentprophets = prophets[minichunk:(minichunk+20)]
+                try:
+                    compute_results_chunk(minicurrentprophets,ip=ip)
+                except:
+                    print("failed to compute a prophet (skipping block of 20)")
+                #    for mcp in minicurrentprophets: #run one by one
+                #        try:
+                #            compute_results_chunk([mcp],ip=ip)
+                #        except:
+                #            print("failed to compute one prophet")
+                    
 
 def loadpatientdata_fromfiles(datafiles):
     dial = pd.read_csv(datafiles['dial'],encoding='latin1')

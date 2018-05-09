@@ -17,7 +17,7 @@ cache = percache.Cache("cache") #some of the methods to load patient data are ca
 verbose = False
 veryverbose = False
 
-def get_params(p,labelstring=""):
+def get_params_one_model(p,labelstring=""):
     """
     Get a dictionary of the hyperparameters that describe the model.
     
@@ -31,10 +31,19 @@ def get_params(p,labelstring=""):
         labelstring = p.name
     params = {}
     for param in p.parameters:
-        params = {**params, **get_params(param,labelstring)}
+        params = {**params, **get_params_one_model(param,labelstring)}
     if hasattr(p,'values'):
         params[labelstring] = p.values
     return params
+    
+def get_params(ps):
+    if not isinstance(ps,list):
+        ps = [ps]
+    allparams = []
+    for p in ps:
+        allparams.append(get_params_one_model(p))
+    return allparams
+        
 
 class ProphetException(Exception):
     def __init__(self,*args,**kwargs):
@@ -197,6 +206,14 @@ class Prophet(object):
             
         self.compute_normalisation(Y,X[:,-1],prior_means=prior_means)
         self.Y = self.normalise(Y,X[:,-1])
+        
+        
+#        if prior_means is not None:
+        #we add an extra point far away to ensure things don't break!
+        for reg in range(regions):
+            self.X = np.r_[self.X,np.array([[-1000,0,reg]])]
+            self.Y = np.r_[self.Y,np.array([[0]])]
+
         self.testX = testX
         self.testY = self.normalise(testY,testX[:,-1])
         
@@ -460,12 +477,14 @@ class Prophet(object):
             else:
                 returnedmodel = None
 
-        except: #catch anything. np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as e:
             predmean = np.nan
             predvar = np.nan
             delta_values = []
             returnedmodel = None
             hyperparameters = None
+            m = None
+            print(e)
                         
         return {'mean':predmean, 'var':predvar, 'delta_values':delta_values, 'model':returnedmodel, 'hyperparameters':get_params(m)}
     
@@ -642,29 +661,44 @@ class ProphetCoregionalised(ProphetGaussianProcess):
         except np.linalg.LinAlgError:
             return None, None, None
         return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), m
-
+        
 class ProphetSimpleGaussian(ProphetGaussianProcess):
     """
     Prophets that use a non-coregionalised representation to make predictions.
-    
-    TODO Currently just using coreg with a diagonal coreg matrix
     """
     def define_model(self):
         """
         """
         debuginfo = []
+        ms = []
+        for reg in range(self.regions):
+            #we build a separate model for each output
+            kern = GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf')
+
+            keep = self.X[:,-1]==reg
+            m = GPy.models.GPRegression(self.X[keep,:],self.Y[keep,:],kern)
+            m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)
+            #m['.*baselinerbf.lengthscale'][1:2].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)  #don't know what a good prior is for the DSD...          
+            ms.append(m)
+        return ms
         
-        #TODO SORT THIS OUT!
-        #raise NotImplementedError
-        #this is an RBF over really just the vintage
-        kern = (GPy.kern.RBF(self.X.shape[1]-1, ARD=True, name='baselinerbf') \
-            **GPy.kern.Coregionalize(input_dim=1, output_dim=self.regions, rank=1, name='baselinecoreg'))
+    def predict(self):
+        try:
+            ms = self.define_model()
+            if self.optimize_model:
+                for m in ms:
+                    m.optimize()
 
-        m = GPy.models.GPRegression(self.X,self.Y,kern)
-
-        m['.*baselinecoreg.W'][:,:].fix(0,warning=False)
-        m['.*baselinerbf.variance'].fix(1,warning=False) #this is controlled now by kappa
-        #m['.*baselinerbf.lengthscale'][1:].fix(100000,warning=False)
-        m['.*baselinerbf.lengthscale'][0:1].set_prior(GPy.priors.LogGaussian(np.log(self.lsprior),0.3),warning=False)
-        #m.Gaussian_noise.fix(0.01,warning=False) 
-        return m
+            testpoints = self.testX[0:1,0:-1]
+            normalised_predmean = []
+            normalised_predvar = []
+            for m in ms:
+                normalised_predmean_for_reg, normalised_predvar_for_reg = m.predict(testpoints)
+                normalised_predmean.append(normalised_predmean_for_reg[0]) #we just take the first item - as there will only be one item as we predict at just one time
+                normalised_predvar.append(normalised_predvar_for_reg[0])
+            normalised_predmean = np.array(normalised_predmean)
+            normalised_predvar = np.array(normalised_predvar)
+        except np.linalg.LinAlgError:
+            return None, None, None
+        return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), ms
+             

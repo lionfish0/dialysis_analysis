@@ -686,8 +686,15 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
         try:
             ms = self.define_model()
             if self.optimize_model:
+                print("OPTIMISING")
                 for m in ms:
                     m.optimize()
+            else:
+                if hasattr(self,'preset_hyperparameters'):
+                    for m,h in zip(ms,self.preset_hyperparameters):
+                        m.Gaussian_noise = h[0]
+                        m['.*baselinerbf.lengthscale'][0:1] = h[1]
+                        m['.*baselinerbf.variance'][0:1] = h[2]
 
             testpoints = self.testX[0:1,0:-1]
             normalised_predmean = []

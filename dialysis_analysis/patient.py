@@ -422,7 +422,7 @@ class Patient(object):
         return prophetclass(X,Y,testX,testY,regions,deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
 
 
-    def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
+    def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None,prior_means=None,fullrestraininglength=np.inf,keepratio=0.25):
         """
         Produces a prediction object for every time point in the dialysis of the patient.
         See generate_prophet for parameter details.
@@ -443,14 +443,14 @@ class Patient(object):
                                           inputdialysis,outputdialysis,
                                           outputlab,
                                           delta_dialysis,delta_lab,
-                                          prior_models=prior_models,fullrestraininglength=fullrestraininglength,keepratio=keepratio))
+                                          prior_models=prior_models,prior_means=prior_means,fullrestraininglength=fullrestraininglength,keepratio=keepratio))
             except PatientException as e:
                 if verbose: print("PatientException: skipping time point %d (%s)" % (d,e))
             except ProphetException as e:
                 if verbose: print("ProphetException: skipping time point %d (%s)" % (d,e))
         return prophets
     
-    def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,prehospitalperiod=np.inf,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
+    def generate_prehospitalisation_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,prehospitalperiod=np.inf,prior_models=None,prior_means=None,fullrestraininglength=np.inf,keepratio=0.25):
         """
         Produces a prediction object for every time point in the dialysis of the patient in the run up to their hospitalisations.
         See generate_prophet for parameter details.

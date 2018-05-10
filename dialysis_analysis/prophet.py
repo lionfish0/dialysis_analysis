@@ -115,8 +115,8 @@ class Prophet(object):
         normalisedY = Y.copy()
         for region in np.unique(region_indexes):
             in_reg = (region_indexes==region)
+            normalisedY[in_reg,:]-=self.normparams[int(region)]['mean'] #always subtract the mean
             if ~np.isnan(self.normparams[int(region)]['std']):
-                normalisedY[in_reg,:]-=self.normparams[int(region)]['mean']
                 normalisedY[in_reg,:]/=self.normparams[int(region)]['std']
         return normalisedY
 
@@ -128,7 +128,8 @@ class Prophet(object):
         """
         if ~np.isnan(self.normparams[region]['std']):
             mean*=self.normparams[region]['std']
-            mean+=self.normparams[region]['mean']
+        mean+=self.normparams[region]['mean'] #always add the mean
+        
         return mean
     
     def unnormalise_specific_variance(self,variance,region):
@@ -152,7 +153,7 @@ class Prophet(object):
         for region in range(self.regions):
             if ~np.isnan(self.normparams[region]['std']):
                 means[region]*=self.normparams[region]['std']
-                means[region]+=self.normparams[region]['mean']
+            means[region]+=self.normparams[region]['mean']
         return means
 
     def unnormalise_variances(self,normalised_vars):
@@ -197,7 +198,6 @@ class Prophet(object):
             
         self.X = X.copy()
         self.regions = regions
-        
         if prior_models is not None:
             if prior_means is not None:
                 raise ProphetException("Predictions from prior_models will overwrite prior_means. Either set prior_means to None or prior_models to None.")
@@ -694,7 +694,8 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
                     for m,h in zip(ms,self.preset_hyperparameters):
                         m.Gaussian_noise = h[0]
                         m['.*baselinerbf.lengthscale'][0:1] = h[1]
-                        m['.*baselinerbf.variance'][0:1] = h[2]
+                        m['.*baselinerbf.lengthscale'][1:2] = h[2]
+                        m['.*baselinerbf.variance'][0:1] = h[3]
 
             testpoints = self.testX[0:1,0:-1]
             normalised_predmean = []

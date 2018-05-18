@@ -165,6 +165,9 @@ def compute_results_dataframe(prophets):
         row = []
         row.append(i)
         row.append(p.frompatient.pat['proband'].values[0])
+        if len(p.testX)<1:
+            if veryverbose: print("Skipping prophet as it has no data")
+            continue
         vintage = p.testX[0,0]
         row.append(vintage) #TODO Assumes first row is vintage
         

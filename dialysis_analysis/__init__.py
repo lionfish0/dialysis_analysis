@@ -16,7 +16,7 @@ import os
 import importlib
 
 verbose = True
-veryverbose = False
+veryverbose = True
 
 
 
@@ -29,7 +29,7 @@ def install_libraries_on_workers(url,runlist = None):
     client = Client(url)
     
     if runlist is None:
-        runlist = ['sudo apt-get -y install build-essential','pip install -U pip','sudo apt install libgl1-mesa-glx -y','conda update scipy -y','pip install git+https://github.com/sods/paramz.git','pip install git+https://github.com/SheffieldML/GPy.git','pip install git+https://github.com/lionfish0/dp4gp.git','conda install dask-searchcv -c conda-forge -y', 'pip install git+https://github.com/lionfish0/dask_dp4gp.git', 'pip install numpy', 'conda remove argcomplete -y','pip install git+https://github.com/lionfish0/dialysis_analysis.git --upgrade']#, 'conda install python=3.6 -y']
+        runlist = ['sudo apt-get -y install build-essential','pip install -U pip','sudo apt install libgl1-mesa-glx -y','conda update scipy -y','pip install git+https://github.com/sods/paramz.git --upgrade --force-reinstall','pip install git+https://github.com/SheffieldML/GPy.git --upgrade --force-reinstall','pip install git+https://github.com/lionfish0/dp4gp.git --upgrade --force-reinstall','conda install dask-searchcv -c conda-forge -y', 'pip install git+https://github.com/lionfish0/dask_dp4gp.git --upgrade --force-reinstall', 'pip install numpy --upgrade --force-reinstall', 'conda remove argcomplete -y --upgrade --force-reinstall','pip install git+https://github.com/lionfish0/dialysis_analysis.git --upgrade --force-reinstall']
 
     for item in runlist:
         print("Installing '%s' on workers..." % item)
@@ -157,8 +157,10 @@ def compute_results_dataframe(prophets):
     colnames.append('Patient Id')
     colnames.append('Vintage')
     for r in regnames:
-        colnames.append(r+" (actual)")
         colnames.append(r+" (predicted)")
+        colnames.append(r+" (var)")        
+        colnames.append(r+" (actual)")
+
     colnames.append('Days until hospitalisation')
     colnames.append('Date')
     for i,p in enumerate(prophets):
@@ -166,25 +168,36 @@ def compute_results_dataframe(prophets):
         row.append(i)
         row.append(p.frompatient.pat['proband'].values[0])
         if len(p.testX)<1:
-            if veryverbose: print("Skipping prophet as it has no data")
+            if veryverbose: 
+                print("Skipping prophet as it has no data")
+                print(row)
             continue
         vintage = p.testX[0,0]
         row.append(vintage) #TODO Assumes first row is vintage
         
         if not hasattr(p,'res'):
-            if veryverbose: print("Skipping prophet as it has not had its results computed")
+            if veryverbose: 
+                print("Skipping prophet as it has not had its results computed")
+                print(row)
             continue
         if p.res['mean'] is None:
-            if veryverbose: print("Skipping prophet as it has None as prediction")
+            if veryverbose: 
+                print("Skipping prophet as it has None as prediction")
+                print(row)
             continue
             
-        for reg,(pred,act) in enumerate(zip(p.res['mean'],p.get_actual())):
+        for reg,(pred,act,var) in enumerate(zip(p.res['mean'],p.res['var'],p.get_actual())):
             row.append(act)
             row.append(pred[0])
-            
+            row.append(var)
+                        
         row.append(get_days_til_hospitalisation(p,vintage))
         #get actual date
-        row.append(p.frompatient.dialysis[p.frompatient.dialysis['num_date']==p.testX[0,0]]['dt_date'].values[0])
+        values = p.frompatient.dialysis[p.frompatient.dialysis['num_date']==p.testX[0,0]]['dt_date'].values
+        if len(values)>0:
+            row.append(values[0])
+        else:
+            row.append(np.nan) # we don't have a real value here.
         data.append(row)
     df = pd.DataFrame(data,columns=colnames)
     return df
@@ -286,12 +299,13 @@ def compute_results(prophets,chunksize=1000,ip='local'):
             compute_results_chunk(currentprophets,ip=ip)
         except:
             print("Exception occured in one of the predictions, running seperately")
-            for minichunk in np.arange(chunk,chunk+chunksize,20): #run in batches of 100 instead of chunksize
-                minicurrentprophets = prophets[minichunk:(minichunk+20)]
+            minichunksize = 10
+            for minichunk in np.arange(chunk,chunk+chunksize,minichunksize): #run in batches of minichunksize instead of chunksize
+                minicurrentprophets = prophets[minichunk:(minichunk+minichunksize)]
                 try:
                     compute_results_chunk(minicurrentprophets,ip=ip)
                 except:
-                    print("failed to compute a prophet (skipping block of 20)")
+                    print("failed to compute a prophet (skipping block of %d)" % minichunksize)
                 #    for mcp in minicurrentprophets: #run one by one
                 #        try:
                 #            compute_results_chunk([mcp],ip=ip)

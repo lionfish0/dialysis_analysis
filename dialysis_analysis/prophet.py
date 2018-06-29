@@ -14,8 +14,9 @@ import percache
 from dialysis_analysis.plotting import plotmodel
 from dialysis_analysis import *
 cache = percache.Cache("cache") #some of the methods to load patient data are cached
-verbose = False
-veryverbose = False
+verbose = True
+veryverbose = True
+highlyverbose = False
 
 def get_params_one_model(p,labelstring=""):
     """
@@ -311,10 +312,12 @@ class Prophet(object):
             
         """
         assert not hasattr(self, 'outliers_removed'), "Outliers already removed!"
+        oldsize = self.X.shape
         self.outliers_removed = True
         keep = self.X[:,1]<=4
+        removeditemcount = sum(~keep)
         if sum(~keep)>0:
-            if verbose: print("Removing %d items that have X[:,1]>4" % sum(~keep))
+            if highlyverbose: print("Removing %d items that have X[:,1]>4" % sum(~keep))
         self.X = self.X[keep,:]
         self.Y = self.Y[keep,:]
 
@@ -325,15 +328,18 @@ class Prophet(object):
         #print("iterating over %d regions" % self.regions)
         for region in range(self.regions):
             inreg = self.X[:,-1]==region #which rows are in region
-            mean = np.mean(self.Y[inreg,:])
-            std = np.std(self.Y[inreg,:])
+            self.Y[np.abs(self.Y)==np.inf] = np.nan
+            mean = np.nanmean(self.Y[inreg,:])
+            std = np.nanstd(self.Y[inreg,:])
             lowerbound = mean-std*4
             upperbound = mean+std*4
             keep[inreg & ((self.Y[:,0]<lowerbound) | (self.Y[:,0]>upperbound))] = False
             if sum(~keep)>0:
-                if verbose: print("removing %d in region %d due to being 4std out" % (sum(~keep),region))
+                if highlyverbose: print("removing %d in region %d due to being 4std out" % (sum(~keep),region))
+            removeditemcount+=sum(~keep)
         self.X = self.X[keep,:]
         self.Y = self.Y[keep,:]
+        if verbose: print("Previous size: %d items. New size: %d items. Removed %d (over all regions and inputs)." % (oldsize[0],self.X.shape[0],removeditemcount))
         
     def define_model(self):
         """

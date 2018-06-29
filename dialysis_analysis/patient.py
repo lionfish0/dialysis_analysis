@@ -16,7 +16,7 @@ cache = percache.Cache("cache") #some of the methods to load patient data are ca
 from scipy.stats import pearsonr
 from dialysis_analysis.prophet import ProphetException
 
-verbose = False
+verbose = True
 veryverbose = False
 
 import numpy as np
@@ -421,6 +421,21 @@ class Patient(object):
         regions = len(outputdialysis)+len(outputlab)
         return prophetclass(X,Y,testX,testY,regions,deltaX = deltaX, deltaY = deltaY, deltaOption=deltaOption, demographics=demographics, prior_means = prior_means, prior_models=prior_models, frompatient=self,  inputdialysis=inputdialysis,outputdialysis=outputdialysis,outputlab=outputlab,delta_dialysis=delta_dialysis,delta_lab=delta_lab)
 
+    def gen_list_of_dates(self,dates):
+        newd = []
+        newd.append(dates[0])
+        newd.append(dates[1])
+        for i in range(2,len(dates)-1):
+            newd.append(dates[i])
+            if dates[i]-dates[i-1]==3 or dates[i-1]-dates[i-2]==3:
+                expected_step = 2
+            else:
+                expected_step = 3
+            if dates[i+1] > dates[i]+expected_step:
+                newd.append(dates[i]+expected_step)
+        newd.append(dates[i+1])
+        return np.array(newd)
+
 
     def generate_all_prophets(self,prophetclass,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,skipstep=1,stopearly=np.inf,prior_models=None,prior_means=None,fullrestraininglength=np.inf,keepratio=0.25):
         """
@@ -433,7 +448,7 @@ class Patient(object):
         set stopearly to only use earlier data from patient (e.g. if interested in vintages <100 days, set to 100)
         """
         prophets = []
-        for d in self.dialysis['num_date'][0::skipstep]:
+        for d in self.gen_list_of_dates(self.dialysis['num_date'][0::skipstep].values): #self.dialysis['num_date'][0::skipstep]:
             if d>=stopearly:
                 #print("Stopped early")
                 break

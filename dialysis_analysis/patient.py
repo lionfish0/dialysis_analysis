@@ -366,9 +366,30 @@ class Patient(object):
         X = np.r_[fullXdial,fullXlab]
         Y = np.r_[Ydial,Ylab]
         included = (X[:,0]>=startvintage) & (X[:,0]<=endvintage)
-        
-        X = X[included,:]
-        Y = Y[included,:]
+        #print("STARTVINTAGE=%d, ENDVINTAGE=%d" % (startvintage, endvintage))        
+        #print(included)
+        if sum(included)==0:
+            print("NON INCLUDED. STARTVINTAGE=%d, ENDVINTAGE=%d" % (startvintage, endvintage))
+            copyfrom = max(X[:,0])
+            print("Copy from: %d" % copyfrom)
+            included = (X[:,0]==copyfrom)
+            previousvintage = X[X[:,0]<startvintage,0]
+            if len(previousvintage)==0:
+                previousvintage = startvintage
+            else:
+                previousvintage = max(previousvintage)
+            print(included)
+            X = X[included,:]
+            X[:,0] = startvintage
+            print(startvintage,previousvintage)
+            X[:,1] = startvintage-previousvintage
+            print(X.shape)
+            Y = np.full([X.shape[0],1],np.nan)
+        else:
+            X = X[included,:]
+            Y = Y[included,:]
+        #print("X")
+        #print(X.shape)
         return X,Y
 
     def generate_prophet(self,prophetclass,date,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,prior_means=None,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
@@ -396,7 +417,9 @@ class Patient(object):
         testX,testY = self.build_model_matrices(inputdialysis, outputdialysis, outputlab, date, date)
         if len(X)<3:
             raise PatientException("Fewer than three training points.")
-            
+        print("X and testX start times and end times:")
+        print(min(X[:,0]),max(X[:,0]),testX)
+
         deltaOption = []
         if delta_dialysis is not None:
             for dd in delta_dialysis:
@@ -426,12 +449,17 @@ class Patient(object):
         newd.append(dates[0])
         newd.append(dates[1])
         for i in range(2,len(dates)-1):
+            
             newd.append(dates[i])
-            if dates[i]-dates[i-1]==3 or dates[i-1]-dates[i-2]==3:
+            j=len(newd)-1
+#            if dates[i]-dates[i-1]==3 or dates[i-1]-dates[i-2]==3:
+            if newd[j]-newd[j-1]==3 or newd[j-1]-newd[j-2]==3:
                 expected_step = 2
             else:
                 expected_step = 3
+            #if dates[i+1] > dates[i]+expected_step:
             if dates[i+1] > dates[i]+expected_step:
+                print("Missing date, expecting %d, but found %d. Adding." % (dates[i]+expected_step, dates[i+1]))
                 newd.append(dates[i]+expected_step)
         newd.append(dates[i+1])
         return np.array(newd)

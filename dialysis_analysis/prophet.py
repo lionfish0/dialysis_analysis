@@ -566,6 +566,7 @@ class ProphetGaussianProcess(Prophet):
             try:
                 m.optimize()
             except np.linalg.LinAlgError:
+                print("Exception optimsing GP")
                 return None, None, None
         testpoints = np.repeat(self.testX[0:1,0:-1],self.regions,0)    
         testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
@@ -664,7 +665,9 @@ class ProphetCoregionalised(ProphetGaussianProcess):
             testpoints = np.repeat(self.testX[0:1,0:-1],self.regions,0)    
             testpoints = (np.c_[testpoints,np.arange(0,self.regions)[:,None]])
             normalised_predmean, normalised_predvar = m.predict(testpoints)
-        except np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as e:
+            print("Exception Making Prediction")
+            print(e)
             return None, None, None
         return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), m
         
@@ -712,7 +715,9 @@ class ProphetSimpleGaussian(ProphetGaussianProcess):
                 normalised_predvar.append(normalised_predvar_for_reg[0])
             normalised_predmean = np.array(normalised_predmean)
             normalised_predvar = np.array(normalised_predvar)
-        except np.linalg.LinAlgError:
+        except np.linalg.LinAlgError as e:
+            print("Exception Making Prediction")
+            print(e)
             return None, None, None
         return self.unnormalise_means(normalised_predmean), self.unnormalise_variances(normalised_predvar), ms
              

@@ -163,6 +163,7 @@ def compute_results_dataframe(prophets):
 
     colnames.append('Days until hospitalisation')
     colnames.append('Date')
+    colnames.append('Day Index Id')    
     for i,p in enumerate(prophets):
         row = []
         row.append(i)
@@ -186,10 +187,10 @@ def compute_results_dataframe(prophets):
                 print(row)
             continue
             
-        for reg,(pred,act,var) in enumerate(zip(p.res['mean'],p.res['var'],p.get_actual())):
-            row.append(act)
+        for reg,(pred,var,act) in enumerate(zip(p.res['mean'],p.res['var'],p.get_actual())):
             row.append(pred[0])
-            row.append(var)
+            row.append(var[0])
+            row.append(act)            
                         
         row.append(get_days_til_hospitalisation(p,vintage))
         #get actual date
@@ -198,6 +199,7 @@ def compute_results_dataframe(prophets):
             row.append(values[0])
         else:
             row.append(np.nan) # we don't have a real value here.
+        row.append(p.testX[0,0])
         data.append(row)
     df = pd.DataFrame(data,columns=colnames)
     return df
@@ -295,22 +297,27 @@ def compute_results(prophets,chunksize=1000,ip='local'):
     for chunk in np.arange(0,len(prophets),chunksize):
         print("Computing %d of %d" % (chunk,len(prophets)))
         currentprophets = prophets[chunk:(chunk+chunksize)]
-        try:
+        if False:
             compute_results_chunk(currentprophets,ip=ip)
-        except:
-            print("Exception occured in one of the predictions, running seperately")
-            minichunksize = 10
-            for minichunk in np.arange(chunk,chunk+chunksize,minichunksize): #run in batches of minichunksize instead of chunksize
-                minicurrentprophets = prophets[minichunk:(minichunk+minichunksize)]
-                try:
-                    compute_results_chunk(minicurrentprophets,ip=ip)
-                except:
-                    print("failed to compute a prophet (skipping block of %d)" % minichunksize)
-                #    for mcp in minicurrentprophets: #run one by one
-                #        try:
-                #            compute_results_chunk([mcp],ip=ip)
-                #        except:
-                #            print("failed to compute one prophet")
+        else:    
+            try:
+                compute_results_chunk(currentprophets,ip=ip)
+            except Exception as e:
+                print("Exception occured in one of the predictions, running seperately")
+                print(e)
+                minichunksize = 10
+                for minichunk in np.arange(chunk,chunk+chunksize,minichunksize): #run in batches of minichunksize instead of chunksize
+                    minicurrentprophets = prophets[minichunk:(minichunk+minichunksize)]
+                    try:
+                        compute_results_chunk(minicurrentprophets,ip=ip)
+                    except Exception as e:
+                        print("failed to compute a prophet (skipping block of %d)" % minichunksize)
+                        print(e)
+                    #    for mcp in minicurrentprophets: #run one by one
+                    #        try:
+                    #            compute_results_chunk([mcp],ip=ip)
+                    #        except:
+                    #            print("failed to compute one prophet")
                     
 
 def loadpatientdata_fromfiles(datafiles):
@@ -337,8 +344,8 @@ def createpatientobjects(datafiles,dial,pat,hosp,lab,comorbidity,getevery=1):
         try:
             patient = Patient(pat[pat['proband']==pt_code], dial[dial['pt_code']==pt_code], lab[lab['pt_code']==pt_code], hosp[hosp['pt_code']==pt_code], comorbidity[comorbidity['pt_code']==pt_code]) 
             patients.append(patient)
-        except TypeError:
-            if verbose: print("Skipped patient %d due to invalid date time value" % pt_code)
+        except TypeError as e:
+            if verbose: print("Skipped patient %d due to invalid date time value (%s)" % (pt_code, e))
         except PatientException as e:
             if verbose: print("Skipped patient %d due to an error creating the patient (%s)" % (pt_code,e))
     return patients

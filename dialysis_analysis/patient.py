@@ -366,30 +366,23 @@ class Patient(object):
         X = np.r_[fullXdial,fullXlab]
         Y = np.r_[Ydial,Ylab]
         included = (X[:,0]>=startvintage) & (X[:,0]<=endvintage)
-        #print("STARTVINTAGE=%d, ENDVINTAGE=%d" % (startvintage, endvintage))        
-        #print(included)
+
         if sum(included)==0:
-            print("NON INCLUDED. STARTVINTAGE=%d, ENDVINTAGE=%d" % (startvintage, endvintage))
             copyfrom = max(X[:,0])
-            print("Copy from: %d" % copyfrom)
             included = (X[:,0]==copyfrom)
             previousvintage = X[X[:,0]<startvintage,0]
             if len(previousvintage)==0:
                 previousvintage = startvintage
             else:
                 previousvintage = max(previousvintage)
-            print(included)
             X = X[included,:]
             X[:,0] = startvintage
-            print(startvintage,previousvintage)
+
             X[:,1] = startvintage-previousvintage
-            print(X.shape)
             Y = np.full([X.shape[0],1],np.nan)
         else:
             X = X[included,:]
             Y = Y[included,:]
-        #print("X")
-        #print(X.shape)
         return X,Y
 
     def generate_prophet(self,prophetclass,date,traininglength,inputdialysis,outputdialysis,outputlab,delta_dialysis=None,delta_lab=None,prior_means=None,prior_models=None,fullrestraininglength=np.inf,keepratio=0.25):
@@ -417,8 +410,7 @@ class Patient(object):
         testX,testY = self.build_model_matrices(inputdialysis, outputdialysis, outputlab, date, date)
         if len(X)<3:
             raise PatientException("Fewer than three training points.")
-        print("X and testX start times and end times:")
-        print(min(X[:,0]),max(X[:,0]),testX)
+
 
         deltaOption = []
         if delta_dialysis is not None:

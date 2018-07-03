@@ -438,8 +438,8 @@ class Patient(object):
 
     def gen_list_of_dates(self,dates):
         newd = []
-        newd.append(dates[0])
-        newd.append(dates[1])
+        if len(dates)>=1: newd.append(dates[0])
+        if len(dates)>=2: newd.append(dates[1])
         for i in range(2,len(dates)-1):
             
             newd.append(dates[i])

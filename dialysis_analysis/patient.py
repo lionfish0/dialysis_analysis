@@ -454,7 +454,7 @@ class Patient(object):
             if dates[i+1] > dates[i]+expected_step:
                 print("Missing date, expecting %d, but found %d. Adding." % (dates[i]+expected_step, dates[i+1]))
                 newd.append(dates[i]+expected_step)
-        if len(dates)>1: newd.append(dates[i+1])
+        if len(dates)>2: newd.append(dates[i+1])
         return np.array(newd)
 
 
